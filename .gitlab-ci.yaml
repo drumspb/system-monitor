@@ -12,3 +12,29 @@ variables:
 build_deb:
   stage: build
   image: debian:bullseye
+  script:
+    - apt-get update && apt-get install -y dpkg-dev
+    - mkdir -p ${BUILD_DIR}/DEBIAN
+    - cp -r zephyr_monitor/* ${BUILD_DIR}/
+    - chmod +x ${BUILD_DIR}/usr/bin/system-monitor.sh
+    - |
+      cat > ${BUILD_DIR}/DEBIAN/control <<EOF
+      Package: ${PACKAGE_NAME}
+      Version: ${VERSION}
+      Section: base
+      Priority: optional
+      Architecture: ${ARCH}
+      Maintainer: You <you@example.com>
+      Description: System Monitor service
+      EOF
+    - mkdir -p ${OUTPUT_DIR}
+    - dpkg-deb --build ${BUILD_DIR} ${OUTPUT_DIR}/${PACKAGE_NAME}_${VERSION}.deb
+  artifacts:
+    paths:
+      - ${OUTPUT_DIR}/${PACKAGE_NAME}_${VERSION}.deb
+    expire_in: 1 week
+
+# deploy:
+#   stage: deploy
+#   script:
+#     - echo "Deploy logic (e.g., scp to your APT repo) goes here"
