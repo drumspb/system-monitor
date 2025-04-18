@@ -1,0 +1,17 @@
+[Unit]
+Description=camera
+After=systemd-networkd.service
+[Service]
+Type=simple
+WorkingDirectory=/opt/ros/noetic
+ExecStart=-/usr/bin/camera start %i &
+ExecStop=-/usr/bin/camera stop
+Restart=on-failure
+RestartSec=50
+LimitNOFILE=65536
+LimitMEMLOCK=infinity
+SendSIGKILL=no
+TimeoutStopSec=0
+SuccessExitStatus=143
+[Install]
+WantedBy=multi-user.target

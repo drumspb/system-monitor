@@ -1,0 +1,31 @@
+<launch>
+<node pkg="camera_manipulator" type="camera_manipulator_node" name="camera_manipulator_left" output="screen">
+<param name="login" type="str" value="ptzuser"/>
+<param name="password" type="str" value="6gtny8tn"/>
+<param name="camera_url" type="str" value="http://192.168.1.169/onvif/device_service"/>
+
+<param name="is_heartbeat" type="bool" value="false"/>
+
+<param name="gcs_url" type="str" value="tcp://127.0.0.1:10000"/>
+<param name="system_id" type="int" value="23"/>
+<param name="component_id" type="int" value="173"/>
+<param name="gimbal_id" type="int" value="173"/>
+
+<rosparam param="yaw_range_0"> [0, 180, 0, 1] </rosparam>
+<rosparam param="yaw_range_1"> [180,355, -1, -0.027778] </rosparam>
+
+<param name="pitch_min_angle" type="double" value="0"/>
+<param name="pitch_max_angle" type="double" value="90"/>
+
+<param name="zoom_min" type="double" value="1"/>
+<param name="zoom_max" type="double" value="100"/>
+
+<param name="do_command_duration" type="double" value="1"/>
+<param name="enable_timer_command" type="bool" value="false"/>
+<param name="enable_do_command_now" type="bool" value="true"/>
+
+<param name="default_pitch" type="double" value="90"/>
+<param name="default_yaw" type="double" value="247"/>
+<param name="default_zoom" type="double" value="1"/>
+</node>
+</launch>

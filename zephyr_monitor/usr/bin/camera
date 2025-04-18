@@ -1,0 +1,91 @@
+#!/bin/bash
+. /lib/lsb/init-functions
+
+# Конфигурация
+ARG=$2
+LAUNCH_FILE="/opt/ros/noetic/camera${ARG}.launch"
+CHECK_INTERVAL=5  # Проверять каждые 5 секунд
+LOG_FILE="/var/log/system_monitor/camera${ARG}_service.log"
+
+camera_usage() {
+echo "Usage: $0 {start|stop|restart|status}"
+}
+log_action_msg() {
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
+}
+camera_daemon() {
+while true; do
+# Получаем URL камеры
+# Извлекаем параметры из launch-файла
+login=$(grep -oP 'name="login"[^>]+value="\K[^"]+' "$LAUNCH_FILE")
+password=$(grep -oP 'name="password"[^>]+value="\K[^"]+' "$LAUNCH_FILE")
+base_url=$(grep -oP 'name="camera_url"[^>]+value="\K[^"]+' "$LAUNCH_FILE")
+camera_ip=$(echo "$base_url" | grep -oP 'http://\K[^/]+')
+camera_url="rtsp://$login:$password@$camera_ip:554"
+http_camera_url="http://$camera_ip"
+
+# Проверяем доступность камеры
+#ffprobe -v error -i "$camera_url" >/dev/null 2>&1
+#camera_available=$?
+
+if curl -s -m 5 -o /dev/null "$http_camera_url"; then
+   camera_available=0  # камера доступна
+else
+   camera_available=1  # камера недоступна 
+fi
+
+# Проверяем, запущен ли ROS
+pgrep -f "roslaunch .*camera${ARG}" >/dev/null
+ros_running=$?
+
+if [ $camera_available -eq 0 ]; then
+# Камера доступна
+if [ $ros_running -ne 0 ]; then
+# Если ROS не запущен, запускаем его
+source /opt/ros/noetic/setup.sh
+roslaunch ./camera${ARG}.launch 2>&1 &
+log_action_msg "ROS запущен"
+fi
+else
+# Камера недоступна
+log_action_msg "Камера недоступна"
+if [ $ros_running -eq 0 ]; then
+# Если ROS был запущен и камера стала недоступна, останавливаем ROS
+log_action_msg "Остановка ROS из-за недоступной камеры"
+pkill -9 -f "roslaunch.*camera${ARG}" >/dev/null 2>&1
+fi
+fi
+
+sleep $CHECK_INTERVAL
+done
+}
+
+camera_start() {
+log_action_msg "Запуск службы камеры"
+camera_daemon
+}
+
+camera_stop()
+{
+pkill -9 -f "roslaunch.*camera${ARG}" >/dev/null 2>&1
+PIDcl=$(ps aux | grep -E "camera_manipulator" | grep -v grep | awk '{print $2}')
+for ppc in ${PIDcl}; do
+kill -9 ${ppc} &>/dev/null
+done
+}
+case "$1" in
+start)
+camera_start
+;;
+stop)
+camera_stop
+;;
+restart)
+camera_stop
+camera_start
+;;
+*)
+camera_usage
+;;
+esac
+exit 0

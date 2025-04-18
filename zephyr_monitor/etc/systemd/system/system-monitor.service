@@ -1,0 +1,19 @@
+[Unit]
+Description=System Monitoring Service
+After=network.target
+StartLimitIntervalSec=500
+StartLimitBurst=5
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/system-monitor.sh
+Restart=on-failure
+RestartSec=5s
+User=root
+Group=root
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=system-monitor
+
+[Install]
+WantedBy=multi-user.target
