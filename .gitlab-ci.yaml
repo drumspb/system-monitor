@@ -1,0 +1,41 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  PACKAGE_NAME: system-monitor
+  VERSION: "1.0"
+  ARCH: all
+  BUILD_DIR: build/${PACKAGE_NAME}
+  OUTPUT_DIR: build/output
+
+build_deb:
+  stage: build
+  image: debian:bullseye
+  script:
+    - apt-get update && apt-get install -y dpkg-dev
+    - mkdir -p ${BUILD_DIR}/DEBIAN
+    - mkdir -p ${BUILD_DIR}/usr/bin
+    - cp zephyr_monitor ${BUILD_DIR}/usr/bin/system-monitor.sh
+    - chmod +x ${BUILD_DIR}/usr/bin/system-monitor.sh
+    - |
+      cat > ${BUILD_DIR}/DEBIAN/control <<EOF
+      Package: ${PACKAGE_NAME}
+      Version: ${VERSION}
+      Section: base
+      Priority: optional
+      Architecture: ${ARCH}
+      Maintainer: You <you@example.com>
+      Description: Simple System Monitor script
+      EOF
+    - mkdir -p ${OUTPUT_DIR}
+    - dpkg-deb --build ${BUILD_DIR} ${OUTPUT_DIR}/${PACKAGE_NAME}_${VERSION}.deb
+  artifacts:
+    paths:
+      - ${OUTPUT_DIR}/${PACKAGE_NAME}_${VERSION}.deb
+    expire_in: 1 week
+
+# deploy:
+#   stage: deploy
+#   script:
+#     - echo "Upload your package here (scp, curl, etc.)"
