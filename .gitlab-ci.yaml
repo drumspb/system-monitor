@@ -11,12 +11,15 @@ variables:
 
 build_deb:
   stage: build
-  image: debian:bullseye
+  image:
+    name: sp-dk-reg.seaproject.ru/tech-img-01:latest
+    # entrypoint: ["/bin/bash", "-c"]
   script:
-    - apt-get update && apt-get install -y dpkg-dev
+    - apt update && apt install -y dpkg-dev
     - mkdir -p ${BUILD_DIR}/DEBIAN
     - cp -r zephyr_monitor/* ${BUILD_DIR}/
-    - chmod +x ${BUILD_DIR}/usr/bin/system-monitor.sh
+    - chmod +x ${BUILD_DIR}/usr/local/bin/system-monitor.sh
+    - chmod +x ${BUILD_DIR}/usr/bin/camera
     - |
       cat > ${BUILD_DIR}/DEBIAN/control <<EOF
       Package: ${PACKAGE_NAME}
@@ -24,7 +27,7 @@ build_deb:
       Section: base
       Priority: optional
       Architecture: ${ARCH}
-      Maintainer: You <you@example.com>
+      Maintainer: You <dromashko@seaproject.ru>
       Description: System Monitor service
       EOF
     - mkdir -p ${OUTPUT_DIR}
@@ -34,7 +37,10 @@ build_deb:
       - ${OUTPUT_DIR}/${PACKAGE_NAME}_${VERSION}.deb
     expire_in: 1 week
 
+# after_script:
+#   - echo "Отчистка временных файлов"
+#   - rm -rf build/
+
 # deploy:
 #   stage: deploy
 #   script:
-#     - echo "Deploy logic (e.g., scp to your APT repo) goes here"
