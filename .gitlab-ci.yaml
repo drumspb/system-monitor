@@ -8,12 +8,12 @@ variables:
   ARCH: all
   BUILD_DIR: build/${PACKAGE_NAME}
   OUTPUT_DIR: build/output
+  DEB_FILE: ${OUTPUT_DIR}/${PACKAGE_NAME}_${VERSION}.deb
 
 build_deb:
   stage: build
   image:
     name: sp-dk-reg.seaproject.ru/tech-img-01:latest
-    # entrypoint: ["/bin/bash", "-c"]
   script:
     - apt update && apt install -y dpkg-dev
     - mkdir -p ${BUILD_DIR}/DEBIAN
@@ -31,16 +31,22 @@ build_deb:
       Description: System Monitor service
       EOF
     - mkdir -p ${OUTPUT_DIR}
-    - dpkg-deb --build ${BUILD_DIR} ${OUTPUT_DIR}/${PACKAGE_NAME}_${VERSION}.deb
+    - dpkg-deb --build ${BUILD_DIR} ${DEB_FILE}
   artifacts:
     paths:
-      - ${OUTPUT_DIR}/${PACKAGE_NAME}_${VERSION}.deb
+      - ${DEB_FILE}
     expire_in: 1 week
 
-# after_script:
-#   - echo "Отчистка временных файлов"
-#   - rm -rf build/
-
-# deploy:
-#   stage: deploy
-#   script:
+release:
+  stage: deploy
+  script:
+    - echo "Creating release with .deb package"
+  release:
+    tag_name: "v${VERSION}"
+    name: "Release v${VERSION}"
+    description: "System Monitor service v${VERSION}"
+    assets:
+      links:
+        - name: "Download .deb"
+          url: "${CI_PROJECT_URL}/-/jobs/${CI_JOB_ID}/artifacts/file/${DEB_FILE}"
+  needs: [build_deb]
