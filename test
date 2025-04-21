@@ -1,53 +1,9 @@
-Running with gitlab-runner 17.10.0 (67b2b2db)
-  on runner-development t1_bYsxL-, system ID: r_G7Asg4onJR5Y
-Resolving secrets
-Preparing the "docker" executor
-00:01
-Using Docker executor with image sp-dk-reg.seaproject.ru/tech-img-01:latest ...
-Using helper image:  sp-dk-reg.seaproject.ru/gitlab-runner-helper:x86_64-v17.10.0  (overridden, default would be  registry.gitlab.com/gitlab-org/gitlab-runner/gitlab-runner-helper:x86_64-v17.10.0 )
-Authenticating with credentials from $DOCKER_AUTH_CONFIG
-Pulling docker image sp-dk-reg.seaproject.ru/gitlab-runner-helper:x86_64-v17.10.0 ...
-Using docker image sha256:4c71a7da163f46a72e2bec01d79d8eed6b81cfd4ec9ba45aec6ade1487cba2e9 for sp-dk-reg.seaproject.ru/gitlab-runner-helper:x86_64-v17.10.0 with digest sp-dk-reg.seaproject.ru/gitlab-runner-helper@sha256:021dcd2b1e91b982d816af326427d417de30c44a4835bf2706c9fa6ba9141882 ...
-Using helper image:  sp-dk-reg.seaproject.ru/gitlab-runner-helper:x86_64-v17.10.0  (overridden, default would be  registry.gitlab.com/gitlab-org/gitlab-runner/gitlab-runner-helper:x86_64-v17.10.0 )
-Using docker image sha256:4c71a7da163f46a72e2bec01d79d8eed6b81cfd4ec9ba45aec6ade1487cba2e9 for sp-dk-reg.seaproject.ru/gitlab-runner-helper:x86_64-v17.10.0 with digest sp-dk-reg.seaproject.ru/gitlab-runner-helper@sha256:021dcd2b1e91b982d816af326427d417de30c44a4835bf2706c9fa6ba9141882 ...
-Authenticating with credentials from $DOCKER_AUTH_CONFIG
-Pulling docker image sp-dk-reg.seaproject.ru/tech-img-01:latest ...
-Using docker image sha256:7eed90f08c5e8e02d30d2718684ad3c9ede093294340c2714f475b9201dc777b for sp-dk-reg.seaproject.ru/tech-img-01:latest with digest sp-dk-reg.seaproject.ru/tech-img-01@sha256:4fcae08225eb2796850862d8fc04ec2e5378d1cb741fcddbdc72396b09e86299 ...
-Preparing environment
-00:01
-Using helper image:  sp-dk-reg.seaproject.ru/gitlab-runner-helper:x86_64-v17.10.0  (overridden, default would be  registry.gitlab.com/gitlab-org/gitlab-runner/gitlab-runner-helper:x86_64-v17.10.0 )
-Using docker image sha256:4c71a7da163f46a72e2bec01d79d8eed6b81cfd4ec9ba45aec6ade1487cba2e9 for sp-dk-reg.seaproject.ru/gitlab-runner-helper:x86_64-v17.10.0 with digest sp-dk-reg.seaproject.ru/gitlab-runner-helper@sha256:021dcd2b1e91b982d816af326427d417de30c44a4835bf2706c9fa6ba9141882 ...
-Running on runner-t1bysxl--project-104-concurrent-1 via srv-gitlab-runner-ee...
-Getting source from Git repository
-00:07
-Fetching changes with git depth set to 20...
-Initialized empty Git repository in /builds/seaprojects/zephyr/hardware_014_xxx/zephyr_monitor/.git/
-Created fresh repository.
-Checking out 8641160a as detached HEAD (ref is main)...
-Skipping Git submodules setup
-Downloading artifacts
-00:01
-Downloading artifacts for build_deb (30)...
-Downloading artifacts from coordinator... ok        host=sp-dk-git.seaproject.ru id=30 responseStatus=200 OK token=64_zZ8rfm
-Executing "step_script" stage of the job script
-00:01
-Using docker image sha256:7eed90f08c5e8e02d30d2718684ad3c9ede093294340c2714f475b9201dc777b for sp-dk-reg.seaproject.ru/tech-img-01:latest with digest sp-dk-reg.seaproject.ru/tech-img-01@sha256:4fcae08225eb2796850862d8fc04ec2e5378d1cb741fcddbdc72396b09e86299 ...
-$ update-ca-certificates # collapsed multi-line command
-Updating certificates in /etc/ssl/certs...
-0 added, 0 removed; done.
-Running hooks in /etc/ca-certificates/update.d...
-done.
-$ echo "Creating release with .deb package"
-Creating release with .deb package
-Executing "step_release" stage of the job script
-00:01
-$ update-ca-certificates # collapsed multi-line command
-Updating certificates in /etc/ssl/certs...
-0 added, 0 removed; done.
-Running hooks in /etc/ca-certificates/update.d...
-done.
-$ release-cli create --name "Release v1.0" --description "System Monitor service v1.0" --tag-name "v1.0" --assets-link "{\"url\":\"https://sp-dk-git.seaproject.ru/seaprojects/zephyr/hardware_014_xxx/zephyr_monitor/-/jobs/31/artifacts/file/build/output/system-monitor_1.0.deb\",\"name\":\"Download .deb\"}"
-/usr/bin/bash: line 166: release-cli: command not found
-Cleaning up project directory and file based variables
-00:00
-ERROR: Job failed: exit code 1
+release:
+  stage: release
+  image: curlimages/curl:latest
+  script:
+    - |
+      curl --header "PRIVATE-TOKEN: $GITLAB_API_TOKEN" --data "name=Release v${VERSION}&tag_name=${RELEASE_TAG}&description=System Monitor service v${VERSION}&assets[links][0][name]=${PACKAGE_NAME}_${VERSION}.deb&assets[links][0][url]=${CI_PROJECT_URL}/-/jobs/${CI_JOB_ID}/artifacts/file/${DEB_FILE}" "https://gitlab.com/api/v4/projects/${CI_PROJECT_ID}/releases"
+  needs: [build_deb]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
