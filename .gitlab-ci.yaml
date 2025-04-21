@@ -1,6 +1,6 @@
 stages:
   - build
-  - deploy
+  - publish
 
 variables:
   PACKAGE_NAME: system-monitor
@@ -9,17 +9,18 @@ variables:
   BUILD_DIR: build/${PACKAGE_NAME}
   OUTPUT_DIR: build/output
   DEB_FILE: ${OUTPUT_DIR}/${PACKAGE_NAME}_${VERSION}.deb
+  CI_API_V4_URL: https://gitlab.example.com/api/v4
+  DIST: stable
+  COMPONENT: main
 
 build_deb:
   stage: build
-  image:
-    name: sp-dk-reg.seaproject.ru/tech-img-01:latest
+  image: sp-dk-reg.seaproject.ru/tech-img-01:latest
   script:
     - apt update && apt install -y dpkg-dev
     - mkdir -p ${BUILD_DIR}/DEBIAN
     - cp -r zephyr_monitor/* ${BUILD_DIR}/
     - chmod +x ${BUILD_DIR}/usr/local/bin/system-monitor.sh
-    - chmod +x ${BUILD_DIR}/usr/bin/camera
     - |
       cat > ${BUILD_DIR}/DEBIAN/control <<EOF
       Package: ${PACKAGE_NAME}
@@ -37,16 +38,14 @@ build_deb:
       - ${DEB_FILE}
     expire_in: 1 week
 
-release:
-  stage: deploy
+publish_deb:
+  stage: publish
+  image: curlimages/curl:latest
   script:
-    - echo "Creating release with .deb package"
-  release:
-    tag_name: "v${VERSION}"
-    name: "Release v${VERSION}"
-    description: "System Monitor service v${VERSION}"
-    assets:
-      links:
-        - name: "Download .deb"
-          url: "${CI_PROJECT_URL}/-/jobs/${CI_JOB_ID}/artifacts/file/${DEB_FILE}"
+    - |
+      curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+           --upload-file ${DEB_FILE} \
+           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/debian/pool/${DIST}/${PACKAGE_NAME}_${VERSION}_${ARCH}.deb"
   needs: [build_deb]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
