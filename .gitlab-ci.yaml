@@ -8,14 +8,11 @@ variables:
   ARCH: all
   BUILD_DIR: build/${PACKAGE_NAME}
   OUTPUT_DIR: build/output
-  DEB_FILE: ${OUTPUT_DIR}/${PACKAGE_NAME}_${VERSION}.deb
-  CI_API_V4_URL: https://gitlab.example.com/api/v4
-  DIST: stable
-  COMPONENT: main
+  DEB_FILE: ${OUTPUT_DIR}/${PACKAGE_NAME}_${VERSION}_${ARCH}.deb
 
 build_deb:
   stage: build
-  image: sp-dk-reg.seaproject.ru/tech-img-01:latest
+  image: ubuntu:focal
   script:
     - apt update && apt install -y dpkg-dev
     - mkdir -p ${BUILD_DIR}/DEBIAN
@@ -35,7 +32,48 @@ build_deb:
     - dpkg-deb --build ${BUILD_DIR} ${DEB_FILE}
   artifacts:
     paths:
-      - ${DEB_FILE}
+      - ${OUTPUT_DIR}/
     expire_in: 1 week
 
-publish_deb:
+upload_package:
+  stage: publish
+  image: curlimages/curl:latest
+  script:
+    - |
+      # Проверка наличия файлов
+      if [ ! -d "${OUTPUT_DIR}" ]; then
+        echo "❌ Error: Build directory ${OUTPUT_DIR} not found!"
+        exit 1
+      fi
+
+      # Создаем уникальную версию на основе коммита
+      PKG_VERSION="${VERSION}-${CI_COMMIT_SHORT_SHA}"
+      
+      echo "📦 Uploading packages to GitLab Generic Registry..."
+      echo "ℹ Version: ${PKG_VERSION}"
+      echo "ℹ Files:"
+      ls -lh ${OUTPUT_DIR}/
+
+      for file in ${OUTPUT_DIR}/*.deb; do
+        if [ -f "$file" ]; then
+          filename=$(basename "$file")
+          echo "⬆ Uploading: ${filename}"
+          
+          if ! curl --fail --silent --show-error \
+               --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+               --upload-file "$file" \
+               "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PACKAGE_NAME}/${PKG_VERSION}/${filename}"; then
+            echo "❌ Failed to upload ${filename}"
+            echo "ℹ Troubleshooting:"
+            echo "1. Check CI_JOB_TOKEN scope"
+            echo "2. Verify Packages are enabled in project settings"
+            exit 1
+          fi
+          
+          echo "✅ Successfully uploaded: ${filename}"
+          echo "🌐 URL: ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PACKAGE_NAME}/${PKG_VERSION}/${filename}"
+        fi
+      done
+  needs: ["build_deb"]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
