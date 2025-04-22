@@ -39,13 +39,3 @@ build_deb:
     expire_in: 1 week
 
 publish_deb:
-  stage: publish
-  image: curlimages/curl:latest
-  script:
-    - |
-      curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
-           --upload-file ${DEB_FILE} \
-           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/debian/pool/${DIST}/${PACKAGE_NAME}_${VERSION}_${ARCH}.deb"
-  needs: [build_deb]
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
