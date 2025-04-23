@@ -28,9 +28,8 @@ while IFS=";" read -r pattern ext dir; do
 
             # Проверка соответствия расширению
             if [[ "$file_ext" == $ext ]]; then
-                target_dir="$ISO_DIR/$dir"
-
-                # Создаём каталог, если его нет
+                # Создаём каталог в текущем каталоге, если его нет
+                target_dir="./$dir"
                 mkdir -p "$target_dir"
 
                 # Копируем файл в нужный каталог
