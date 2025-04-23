@@ -1,21 +1,45 @@
-stages:
-  - build
+#!/bin/bash
 
-build_distr:
-  stage: build
-  image:
-    name: sp-dk-reg.seaproject.ru/tech-img-01:latest
-  script:
-    - |
-      IFS='/' read -r -a PARTS <<< "$CI_PROJECT_PATH"
-      for i in "${!PARTS[@]}"; do
-        if [[ "${PARTS[$i]}" == "deploy" ]]; then
-          DEPLOY_INDEX=$i
-          break
-        fi
-      done
-      [ -z "$DEPLOY_INDEX" ] && exit 1
-      TARGET_PARTS=("${PARTS[@]:0:$DEPLOY_INDEX}")
-      DIR_NAME=$(IFS=_ ; echo "${TARGET_PARTS[*]}")
-      mkdir -p "$DIR_NAME"
-      cp -r ./* "$DIR_NAME"/
+# Путь к .txt файлу
+TXT_FILE="path/to/your/file.txt"
+
+# Путь к примонтированному каталогу с ISO-образами
+ISO_DIR="/mnt/smb/iso_images"
+
+# Чтение .txt файла строка за строкой
+while IFS=";" read -r pattern ext dir; do
+    # Убираем пробелы в начале и в конце
+    pattern=$(echo "$pattern" | xargs)
+    ext=$(echo "$ext" | xargs)
+    dir=$(echo "$dir" | xargs)
+
+    # Поиск всех ISO-образов, соответствующих pattern
+    find "$ISO_DIR" -type f -name "$pattern*.iso" | while read -r iso_file; do
+        echo "Найден ISO: $iso_file"
+
+        # Распаковка ISO-образа в временную папку
+        temp_dir=$(mktemp -d)
+        7z x "$iso_file" -o"$temp_dir" >/dev/null 2>&1
+
+        # Распределение файлов по каталогам
+        find "$temp_dir" -type f | while read -r file; do
+            # Извлечение расширения файла
+            file_ext="${file##*.}"
+
+            # Проверка соответствия расширению
+            if [[ "$file_ext" == $ext ]]; then
+                target_dir="$ISO_DIR/$dir"
+
+                # Создаём каталог, если его нет
+                mkdir -p "$target_dir"
+
+                # Копируем файл в нужный каталог
+                mv "$file" "$target_dir/"
+                echo "Перемещен файл: $file -> $target_dir"
+            fi
+        done
+
+        # Удаляем временную папку
+        rm -rf "$temp_dir"
+    done
+done < "$TXT_FILE"
