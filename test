@@ -1,9 +1,32 @@
-release:
-  stage: release
-  image: curlimages/curl:latest
+stages:
+  - build
+
+build_job:
+  stage: build
   script:
     - |
-      curl --header "PRIVATE-TOKEN: $GITLAB_API_TOKEN" --data "name=Release v${VERSION}&tag_name=${RELEASE_TAG}&description=System Monitor service v${VERSION}&assets[links][0][name]=${PACKAGE_NAME}_${VERSION}.deb&assets[links][0][url]=${CI_PROJECT_URL}/-/jobs/${CI_JOB_ID}/artifacts/file/${DEB_FILE}" "https://gitlab.com/api/v4/projects/${CI_PROJECT_ID}/releases"
-  needs: [build_deb]
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
+      echo "Оригинальный путь проекта: $CI_PROJECT_PATH"
+
+      # Разбиваем путь на части
+      IFS='/' read -r -a PARTS <<< "$CI_PROJECT_PATH"
+
+      # Ищем индекс "deploy"
+      for i in "${!PARTS[@]}"; do
+        if [[ "${PARTS[$i]}" == "deploy" ]]; then
+          DEPLOY_INDEX=$i
+          break
+        fi
+      done
+
+      # Проверка: нашли ли "deploy"
+      if [ -z "$DEPLOY_INDEX" ]; then
+        echo "Ошибка: в пути не найден 'deploy'"
+        exit 1
+      fi
+
+      # Собираем элементы до "deploy" в одну строку через "_"
+      TARGET_PARTS=("${PARTS[@]:0:$DEPLOY_INDEX}")
+      DIR_NAME=$(IFS=_ ; echo "${TARGET_PARTS[*]}")
+
+      echo "Создаём каталог: $DIR_NAME"
+      mkdir -p "$DIR_NAME"
