@@ -1,37 +1,21 @@
 stages:
-  - biuld
-
-variables:
-  BUILD_DIR: "$CI_PROJEKT_PATH"
-  IFS: 
+  - build
 
 build_distr:
-  before_skript: 
-      IFS='/' read -r -a PARTS <<< "$CI_PROJECT_PATH"
-
-
-        for i in "${!PARTS[@]}"; do
-          if [[ "${PARTS[$i]}" == "deploy" ]]; then
-            DEPLOY_INDEX=$i
-            break
-          fi
-        done
-
-        # Проверка: нашли ли "deploy"
-        if [ -z "$DEPLOY_INDEX" ]; then
-          echo "Ошибка: в пути не найден 'deploy'"
-          exit 1
-        fi
-
-        # Собираем элементы до "deploy" в одну строку через "_"
-        TARGET_PARTS=("${PARTS[@]:0:$DEPLOY_INDEX}")
-        DIR_NAME=$(IFS=_ ; echo "${TARGET_PARTS[*]}")
-
-        echo "Создаём каталог: $DIR_NAME"
-        mkdir -p "$DIR_NAME"
   stage: build
   image:
-    name: sp-dk-reg.seaproject.ru/tech-img-01:latest 
-  skript:
-  - mkdir -p "$DIR_NAME"
-  - cp -r ./* "$DIR_NAME"/  
+    name: sp-dk-reg.seaproject.ru/tech-img-01:latest
+  script:
+    - |
+      IFS='/' read -r -a PARTS <<< "$CI_PROJECT_PATH"
+      for i in "${!PARTS[@]}"; do
+        if [[ "${PARTS[$i]}" == "deploy" ]]; then
+          DEPLOY_INDEX=$i
+          break
+        fi
+      done
+      [ -z "$DEPLOY_INDEX" ] && exit 1
+      TARGET_PARTS=("${PARTS[@]:0:$DEPLOY_INDEX}")
+      DIR_NAME=$(IFS=_ ; echo "${TARGET_PARTS[*]}")
+      mkdir -p "$DIR_NAME"
+      cp -r ./* "$DIR_NAME"/
