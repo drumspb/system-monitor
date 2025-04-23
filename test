@@ -1,30 +1,61 @@
 #!/bin/bash
 
-TXT_FILE="./rules.txt"
-ISO_DIR="/mnt/smb/iso_images"
-UNPACK_DIR="./unpacked"
+TXT_FILE="/home/probook/Downloads/inventory.numbers.txt"
+ISO_DIR="/mnt/sda2/"
+UNPACK_DIR="/mnt/sda"
+MOUNT_DIR="/mnt/tmpiso"
 
 mkdir -p "$UNPACK_DIR"
 
-declare -A PATTERNS_MAP
 ISO_PATTERNS=()
 
-# Этап 1: Считаем уникальные шаблоны ISO
+# Этап 1: Парсим уникальные шаблоны ISO
 while IFS=";" read -r pattern _ _; do
-  pattern=$(echo "$pattern" | xargs)
-  PATTERNS_MAP["$pattern"]=1
+  ISO_PATTERNS+=("$(echo "$pattern" | xargs)")
 done < "$TXT_FILE"
 
-ISO_PATTERNS=("${!PATTERNS_MAP[@]}")
+ISO_PATTERNS=($(printf "%s\n" "${ISO_PATTERNS[@]}" | sort -u ))
+
+echo ${ISO_PATTERNS[*]}
 
 # Этап 2: Ищем и распаковываем ISO-файлы
 for pattern in "${ISO_PATTERNS[@]}"; do
-  find "$ISO_DIR" -type f -iname "${pattern}*.iso" | while read -r iso; do
-    iso_name=$(basename "$iso" .iso)
-    target="$UNPACK_DIR/$iso_name"
-    echo "Распаковываю: $iso -> $target"
-    mkdir -p "$target"
-    7z x "$iso" -o"$target" >/dev/null 2>&1
+  echo "Поиск ISO по шаблону: '${pattern}*.iso'"
+  
+  # Используем массив для хранения найденных ISO
+  found_isos=()
+  while IFS= read -r -d $'\0' iso; do
+    found_isos+=("$iso")
+  done < <(find "$ISO_DIR" -type f -iname "${pattern}*.iso" -print0)
+  
+  if [ ${#found_isos[@]} -eq 0 ]; then
+    echo "  Не найдено ни одного ISO для шаблона ${pattern}"
+    continue
+  fi
+  
+  echo "  Найдено ISO: ${#found_isos[@]}"
+  
+  for iso in "${found_isos[@]}"; do
+    iso_name=$(basename "$iso" .iso | tr ' ' '_')
+    mount_point="$MOUNT_DIR/$iso_name"
+    
+    # Проверяем, не смонтирован ли уже этот ISO
+    if mount | grep -q "$mount_point"; then
+      echo "  [ПРОПУСК] $iso уже смонтирован в $mount_point"
+      continue
+    fi
+    
+    echo "  Монтирую: $iso"
+    echo "  В точку: $mount_point"
+    
+    mkdir -p "$mount_point"
+    
+    if mount -o loop "$iso" "$mount_point" 2>/dev/null; then
+      echo "  [OK] Успешно смонтировано"
+    else
+      echo "  [ОШИБКА] Не удалось смонтировать $iso" >&2
+      rmdir "$mount_point" 2>/dev/null
+    fi
   done
 done
 
@@ -36,11 +67,11 @@ while IFS=";" read -r pattern mask target_dir; do
 
   mkdir -p "./$target_dir"
 
-  find "$UNPACK_DIR" -type f -iname "$mask" | while read -r file; do
+  find "$MOUNT_DIR" -type f -iname "$mask" | while read -r file; do
     base=$(basename "$file")
     if [[ "$base" == $pattern* ]]; then
       echo "Перемещаю: $file -> $target_dir"
-      mv "$file" "./$target_dir/"
+      mv "$file" "$UNPACK_DIR/$target_dir/"
     fi
   done
 done < "$TXT_FILE"
