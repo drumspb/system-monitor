@@ -1,44 +1,46 @@
 #!/bin/bash
 
-# Путь к .txt файлу
-TXT_FILE="path/to/your/file.txt"
-
-# Путь к примонтированному каталогу с ISO-образами
+TXT_FILE="./rules.txt"
 ISO_DIR="/mnt/smb/iso_images"
+UNPACK_DIR="./unpacked"
 
-# Чтение .txt файла строка за строкой
-while IFS=";" read -r pattern ext dir; do
-    # Убираем пробелы в начале и в конце
-    pattern=$(echo "$pattern" | xargs)
-    ext=$(echo "$ext" | xargs)
-    dir=$(echo "$dir" | xargs)
+mkdir -p "$UNPACK_DIR"
 
-    # Поиск всех ISO-образов, соответствующих pattern
-    find "$ISO_DIR" -type f -name "$pattern*.iso" | while read -r iso_file; do
-        echo "Найден ISO: $iso_file"
+declare -A PATTERNS_MAP
+ISO_PATTERNS=()
 
-        # Распаковка ISO-образа в временную папку
-        temp_dir=$(mktemp -d)
-        7z x "$iso_file" -o"$temp_dir" >/dev/null 2>&1
+# Этап 1: Считаем уникальные шаблоны ISO
+while IFS=";" read -r pattern _ _; do
+  pattern=$(echo "$pattern" | xargs)
+  PATTERNS_MAP["$pattern"]=1
+done < "$TXT_FILE"
 
-        # Распределение файлов по каталогам
-        find "$temp_dir" -type f | while read -r file; do
-            # Извлечение расширения файла
-            file_ext="${file##*.}"
+ISO_PATTERNS=("${!PATTERNS_MAP[@]}")
 
-            # Проверка соответствия расширению
-            if [[ "$file_ext" == $ext ]]; then
-                # Создаём каталог в текущем каталоге, если его нет
-                target_dir="./$dir"
-                mkdir -p "$target_dir"
+# Этап 2: Ищем и распаковываем ISO-файлы
+for pattern in "${ISO_PATTERNS[@]}"; do
+  find "$ISO_DIR" -type f -iname "${pattern}*.iso" | while read -r iso; do
+    iso_name=$(basename "$iso" .iso)
+    target="$UNPACK_DIR/$iso_name"
+    echo "Распаковываю: $iso -> $target"
+    mkdir -p "$target"
+    7z x "$iso" -o"$target" >/dev/null 2>&1
+  done
+done
 
-                # Копируем файл в нужный каталог
-                mv "$file" "$target_dir/"
-                echo "Перемещен файл: $file -> $target_dir"
-            fi
-        done
+# Этап 3: Сортируем файлы по правилам
+while IFS=";" read -r pattern mask target_dir; do
+  pattern=$(echo "$pattern" | xargs)
+  mask=$(echo "$mask" | xargs)
+  target_dir=$(echo "$target_dir" | xargs)
 
-        # Удаляем временную папку
-        rm -rf "$temp_dir"
-    done
+  mkdir -p "./$target_dir"
+
+  find "$UNPACK_DIR" -type f -iname "$mask" | while read -r file; do
+    base=$(basename "$file")
+    if [[ "$base" == $pattern* ]]; then
+      echo "Перемещаю: $file -> $target_dir"
+      mv "$file" "./$target_dir/"
+    fi
+  done
 done < "$TXT_FILE"
