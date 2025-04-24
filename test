@@ -1,20 +1,36 @@
 stages:
   - build
 
+variables:
+  SMB_USER: myuser
+  SMB_PASS: mypass
+
 build_distr:
   stage: build
   image:
     name: sp-dk-reg.seaproject.ru/tech-img-01:latest
   script:
     - |
+      # Инициализация переменных
+      ISO_DIR="/mnt/iso"
+      UNPACK_DIR="/mnt/ansible"
+      MOUNT_DIR="/mnt/tmpiso"
+      TXT_FILE="./inventory.numbers.txt"
+
       # Подготовка директорий
-      mkdir -p /mnt/iso
-      mkdir -p /mnt/ansible
-      mkdir -p /mnt/tmpiso
-      
-      # Монтирование сетевых ресурсов
-      mount -t cifs "//sp-dk-smb.seaproject.ru/project_iso" -o user=$SMB_USER,password=$SMB_PASS,ro,iocharset=utf8,vers=2.1 /mnt/iso
-      mount -t cifs "//sp-dk-smb.seaproject.ru/project_ansible" -o user=$SMB_USER,password=$SMB_PASS,rw,iocharset=utf8 /mnt/ansible
+      mkdir -p "$ISO_DIR" "$UNPACK_DIR" "$MOUNT_DIR"
+
+      # Монтирование SMB-шар
+      mount -t cifs "//sp-dk-smb.seaproject.ru/project_iso" -o user=$SMB_USER,password=$SMB_PASS,ro,iocharset=utf8,vers=2.1 "$ISO_DIR"
+      mount -t cifs "//sp-dk-smb.seaproject.ru/project_ansible" -o user=$SMB_USER,password=$SMB_PASS,rw,iocharset=utf8 "$UNPACK_DIR"
+
+      # Проверка TXT-файла
+      if [ ! -f "$TXT_FILE" ]; then
+        echo "Файл $TXT_FILE не найден!"
+        exit 1
+      fi
+      echo "Содержимое $TXT_FILE:"
+      cat "$TXT_FILE"
 
       # Анализ пути проекта
       IFS='/' read -r -a PARTS <<< "$CI_PROJECT_PATH"
@@ -32,99 +48,72 @@ build_distr:
         SUBDIR="${PARTS[$((DEPLOY_INDEX - 1))]}"
         PRIME_DIR=$(IFS=_ ; echo "${BASE_PARTS[*]}")
         DIR_NAME="$PRIME_DIR/$SUBDIR"
-        mkdir -p "$UNPACK_DIR/$DIR_NAME"
-        cp -r ./* "$UNPACK_DIR/$DIR_NAME"/
       else  
         BASE_PARTS=("${PARTS[@]:1:$DEPLOY_INDEX}")
         DIR_NAME=$(IFS=_ ; echo "${BASE_PARTS[*]}")
-        mkdir -p "$UNPACK_DIR/$DIR_NAME"
-        cp -r ./* "$UNPACK_DIR/$DIR_NAME"/
       fi  
 
-      # Инициализация переменных
-      TXT_FILE="./inventory.numbers.txt"
-      ISO_DIR="/mnt/iso/"
-      UNPACK_DIR="/mnt/ansible"
-      MOUNT_DIR="/mnt/tmpiso"
-      ISO_PATTERNS=()
+      mkdir -p "$UNPACK_DIR/$DIR_NAME"
+      cp -r ./* "$UNPACK_DIR/$DIR_NAME"/
 
-      # Парсинг шаблонов ISO
-      while IFS=";" read -r pattern _ _; do
-        ISO_PATTERNS+=("$(echo "$pattern" | xargs)")
-      done < "$TXT_FILE"
-
-      ISO_PATTERNS=($(printf "%s\n" "${ISO_PATTERNS[@]}" | sort -u))
-      echo ${ISO_PATTERNS[*]}
+      # Получение списка шаблонов ISO
+      echo "=== Поиск уникальных шаблонов ISO ==="
+      ISO_PATTERNS=($(awk -F';' '{print $1}' "$TXT_FILE" | xargs -n1 | sort -u))
+      echo "Найденные шаблоны ISO: ${ISO_PATTERNS[*]}"
 
       # Поиск и монтирование ISO
       for pattern in "${ISO_PATTERNS[@]}"; do
-        echo "Поиск ISO по шаблону: '${pattern}*.iso'"
-        
-        found_isos=()
-        while IFS= read -r -d $'\0' iso; do
-          found_isos+=("$iso")
-        done < <(find "$ISO_DIR" -type f -iname "${pattern}*.iso" -print0)
-        
-        if [ ${found_isos[@]} -eq 0 ]; then
-          echo "  Не найдено ни одного ISO для шаблона ${pattern}"
+        echo "Поиск ISO: ${pattern}*.iso"
+        mapfile -d '' found_isos < <(find "$ISO_DIR" -type f -iname "${pattern}*.iso" -print0)
+
+        if [ "${#found_isos[@]}" -eq 0 ]; then
+          echo "  Нет ISO для шаблона $pattern"
           continue
         fi
-        
-        echo "  Найдено ISO: ${found_isos[@]}"
-        
+
+        echo "  Найдено ISO: ${found_isos[*]}"
         for iso in "${found_isos[@]}"; do
           iso_name=$(basename "$iso" .iso | tr ' ' '_')
           mount_point="$MOUNT_DIR/$iso_name"
-          
-          if mount | grep -q "$mount_point"; then
-            echo "  [ПРОПУСК] $iso уже смонтирован в $mount_point"
+          mkdir -p "$mount_point"
+
+          if mountpoint -q "$mount_point"; then
+            echo "  [$iso_name] уже смонтирован, пропускаем"
             continue
           fi
-          
-          echo "  Монтирую: $iso"
-          echo "  В точку: $mount_point"
-          
-          mkdir -p "$mount_point"
-          
-          if mount -o loop,rw  "$iso" "$mount_point" 2>/dev/null; then
-            echo "  [OK] Успешно смонтировано"
+
+          echo "  Монтирую $iso в $mount_point"
+          if mount -o loop,ro "$iso" "$mount_point"; then
+            echo "  [$iso_name] смонтировано"
           else
-            echo "  [ОШИБКА] Не удалось смонтировать $iso" >&2
-            rmdir "$mount_point" 2>/dev/null
+            echo "  [ОШИБКА] Не удалось смонтировать $iso"
+            rmdir "$mount_point"
           fi
         done
       done
 
-      # Сортировка файлов
-      echo "=== Начало сортировки файлов ==="
-      echo "UNPACK_DIR: $UNPACK_DIR"
-      echo "DIR_NAME: $DIR_NAME"
-      echo "MOUNT_DIR: $MOUNT_DIR"
+      echo "=== Начинается сортировка файлов ==="
 
-      while IFS=";" read -r pattern mask target_dir; do
-        # Очистка переменных от лишних пробелов
-        pattern=$(echo "$pattern" | xargs)
+      # Сортировка файлов по маскам
+      while IFS=";" read -r _ mask target_dir; do
         mask=$(echo "$mask" | xargs)
         target_dir=$(echo "$target_dir" | xargs)
-        
-        echo "Обработка шаблона: $pattern | маска: $mask | целевая директория: $target_dir"
-        
-        # Создаем целевую директорию
+
+        echo "Обработка маски '$mask' -> каталог '$target_dir'"
         full_target_dir="$UNPACK_DIR/$DIR_NAME/distr/$target_dir"
-        mkdir -p "$full_target_dir" || { echo "Ошибка создания директории $full_target_dir"; exit 1; }
-        
-        # Поиск и перемещение файлов
-        find "$MOUNT_DIR" -type f -iname "$mask" | while read -r file; do
-          base=$(basename "$file")
-          if [[ "$base" == $pattern* ]]; then
-            echo "Найден файл: $file"
-            echo "Перемещаю: $file -> $full_target_dir/"
-            if ! rsync -avh "$file" "$full_target_dir/"; then
-              echo "Ошибка перемещения файла $file" >&2
-            fi
-          fi
+        mkdir -p "$full_target_dir"
+
+        found_files=$(find "$MOUNT_DIR" -type f -iname "$mask")
+        if [ -z "$found_files" ]; then
+          echo "  Файлы по маске '$mask' не найдены"
+          continue
+        fi
+
+        echo "$found_files" | while read -r file; do
+          echo "  Перемещаю $file -> $full_target_dir/"
+          rsync -avh "$file" "$full_target_dir/"
         done
       done < "$TXT_FILE"
 
-      # echo "=== Завершение сортировки файлов ==="
+      echo "=== Готово ==="
   when: manual
