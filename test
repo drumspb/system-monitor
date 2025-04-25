@@ -51,3 +51,5 @@ for JOB_ID in $JOB_IDS; do
   curl -s --header "PRIVATE-TOKEN: $GROUP_TOKEN" \
     "$GITLAB_URL/api/v4/projects/$PROJECT_ID/jobs/$JOB_ID/trace" --follow
 done
+
+https://sp-dk-git.seaproject.ru/seaprojects/22800/20x-80x/bzh/deploy/distr/-/pipelines
