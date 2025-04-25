@@ -66,3 +66,11 @@ Created on: Apr 25, 2024 9:01pm
 ID: 63
 http: https://sp-dk-git.seaproject.ru/seaprojects/22800/20x-80x/bzh/deploy/distr.git
 ssh: git@sp-dk-git.seaproject.ru:seaprojects/22800/20x-80x/bzh/deploy/distr.git
+
+probook@sp-nb-poke05:~$ ./distr.sh 22800
+Проект не найден: seaproject/22800
+probook@sp-nb-poke05:~$ ./distr.sh
+Ошибка запуска пайплайна:
+{"message":{"base":["You do not have sufficient permission to run a pipeline on 'main'. Please select a different branch or contact your administrator for assistance."]}}
+probook@sp-nb-poke05:~$ ./distr.sh
+Проект не найден: seaprojects/22800/20x-80x/bzh/deploy/distr
