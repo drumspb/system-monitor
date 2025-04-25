@@ -53,3 +53,16 @@ for JOB_ID in $JOB_IDS; do
 done
 
 https://sp-dk-git.seaproject.ru/seaprojects/22800/20x-80x/bzh/deploy/distr/-/pipelines
+
+
+
+Projects / 22800 / 20x-80x / bzh / deploy / distr
+Project information
+Name: distr
+Namespace: Projects / 22800 / 20x-80x / bzh / deploy
+Owned by: Rukin Michail
+Created by: Rukin Michail
+Created on: Apr 25, 2024 9:01pm
+ID: 63
+http: https://sp-dk-git.seaproject.ru/seaprojects/22800/20x-80x/bzh/deploy/distr.git
+ssh: git@sp-dk-git.seaproject.ru:seaprojects/22800/20x-80x/bzh/deploy/distr.git
