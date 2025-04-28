@@ -74,3 +74,8 @@ probook@sp-nb-poke05:~$ ./distr.sh
 {"message":{"base":["You do not have sufficient permission to run a pipeline on 'main'. Please select a different branch or contact your administrator for assistance."]}}
 probook@sp-nb-poke05:~$ ./distr.sh
 Проект не найден: seaprojects/22800/20x-80x/bzh/deploy/distr
+
+
+curl --request POST "https://sp-dk-git.seaproject.ru/api/v4/projects/63/pipeline" \
+     --header "PRIVATE-TOKEN: YOUR_GROUP_ACCESS_TOKEN" \
+     --form "ref=main"
