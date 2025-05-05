@@ -162,3 +162,11 @@ monitor_ssh & echo $! >> "$PID_FILE"
 
 # Ожидание завершения процессов
 wait
+
+# Лог systemd сообщений о падении служб
+if ($syslogtag == 'systemd' or $programname == 'systemd') and \
+   (msg contains 'Failed' or msg contains 'failure' or msg contains 'failed') then {
+    /var/log/system-monitor/failed-services.log
+    stop
+}
+
