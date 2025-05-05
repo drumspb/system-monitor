@@ -1,81 +1,188 @@
+
 #!/bin/bash
 
-# === Конфигурация ===
-GITLAB_URL="https://gitlab.example.com"
-GROUP_TOKEN="your_group_access_token"
-
-# === Аргументы ===
-PROJECT_PATH="$1"
-BRANCH="${2:-main}"
-
-if [ -z "$PROJECT_PATH" ]; then
-  echo "Использование: $0 <group/project> [branch]"
-  exit 1
+# Загрузка конфигурации
+CONFIG_FILE="/etc/system_monitor/system_monitor.conf"
+if [ ! -f "$CONFIG_FILE" ]; then
+echo "Config file not found: $CONFIG_FILE" >&2
+exit 1
 fi
 
-# === Получаем ID проекта ===
-ENCODED_PATH=$(echo "$PROJECT_PATH" | sed 's/\//%2F/g')
-PROJECT_API_URL="$GITLAB_URL/api/v4/projects/$ENCODED_PATH"
+# Парсинг конфига
+get_config() {
+awk -F ' = ' -v section="$1" -v key="$2" '
+$0 ~ /^\[.*\]/ {
+gsub(/\[|\]/, "", $0)
+current_section = $0
+}
+current_section == section && $1 == key {
+gsub(/\"/, "", $2)
+print $2
+}
+' "$CONFIG_FILE"
+}
 
-PROJECT_ID=$(curl -s --header "PRIVATE-TOKEN: $GROUP_TOKEN" "$PROJECT_API_URL" | jq -r .id)
+# Инициализация переменных
+LOG_DIR=$(get_config "main" "log_dir")
+PID_FILE=$(get_config "main" "pid_file")
+INTERFACES=$(get_config "network" "interfaces" | tr ',' ' ')
+# KERNEL_EXCLUDE=$(get_config "kernel" "exclude")
+# SERVICES_EXCLUDE=$(get_config "services" "exclude")
 
-if [[ "$PROJECT_ID" == "null" || -z "$PROJECT_ID" ]]; then
-  echo "Проект не найден: $PROJECT_PATH"
-  exit 1
+# Создаем директории
+mkdir -p "$LOG_DIR" || { echo "Cannot create log directory"; exit 1; }
+touch "$PID_FILE" || { echo "Cannot create pid file"; exit 1; }
+
+# Функция логирования
+log() {
+local log_file="$LOG_DIR/$1.log"
+local message="$2"
+echo "$(date "+%b %d %H:%M:%S") $message" >> "$log_file"
+
+# Мониторинг CPU и RAM
+monitor_cpu_ram_temp() {
+local interval=$(get_config "intervals" "cpu_ram")
+
+# Определяем пути к температурным датчикам
+local temp_paths=(
+"/sys/class/thermal/thermal_zone0/temp"
+"/sys/class/thermal/thermal_zone1/temp"
+)
+
+while true; do
+# Загрузка CPU
+cpu_usage=$(top -bn1 | grep "Cpu(s)" | awk '{print 100 - $8}')
+
+# Использование RAM
+ram_usage=$(free | awk '/Mem/{printf "%.1f%%", $3/$2*100}')
+
+# Получаем температуры с обоих датчиков
+local temps=()
+for path in "${temp_paths[@]}"; do
+if [ -f "$path" ]; then
+temp=$(awk '{printf "%.1f", $1/1000}' "$path" 2>/dev/null)
+[ -n "$temp" ] && temps+=("$temp")
 fi
-
-# === Запуск пайплайна ===
-RESPONSE=$(curl -s --request POST \
-  --header "PRIVATE-TOKEN: $GROUP_TOKEN" \
-  --form "ref=$BRANCH" \
-  "$GITLAB_URL/api/v4/projects/$PROJECT_ID/pipeline")
-
-PIPELINE_ID=$(echo "$RESPONSE" | jq -r .id)
-
-if [[ "$PIPELINE_ID" == "null" || -z "$PIPELINE_ID" ]]; then
-  echo "Ошибка запуска пайплайна:"
-  echo "$RESPONSE"
-  exit 1
-fi
-
-echo "Пайплайн запущен: $GITLAB_URL/$PROJECT_PATH/pipelines/$PIPELINE_ID"
-
-# === Получаем логи пайплайна в реальном времени ===
-JOB_IDS=$(curl -s --header "PRIVATE-TOKEN: $GROUP_TOKEN" \
-  "$GITLAB_URL/api/v4/projects/$PROJECT_ID/pipelines/$PIPELINE_ID/jobs" | jq -r '.[].id')
-
-for JOB_ID in $JOB_IDS; do
-  echo "Логи задания $JOB_ID (ждем выполнения):"
-  
-  # Получаем логи в реальном времени
-  curl -s --header "PRIVATE-TOKEN: $GROUP_TOKEN" \
-    "$GITLAB_URL/api/v4/projects/$PROJECT_ID/jobs/$JOB_ID/trace" --follow
 done
 
-https://sp-dk-git.seaproject.ru/seaprojects/22800/20x-80x/bzh/deploy/distr/-/pipelines
+# Форматируем температурные данные
+local temp_str="N/A"
+if [ ${#temps[@]} -gt 0 ]; then
+if [ ${#temps[@]} -eq 1 ]; then
+temp_str="${temps[0]}°C"
+else
+temp_str="CPU:${temps[0]}°C SOC:${temps[1]}°C"
+fi
+fi
+
+# Логирование
+log "cpu_stats" "CPU:${cpu_usage}% RAM:${ram_usage} ${temp_str}"
+
+# Проверка перегрева (по первому датчику)
+if [ -n "${temps[0]}" ] && [ $(echo "${temps[0]} > 80" | bc -l) -eq 1 ]; then
+log "alerts" "WARNING: High temperature detected: ${temps[0]}°C"
+fi
+
+sleep "$interval"
+done
+}
 
 
+# Мониторинг перезагрузки
+check_reboot() {
+    local last_boot=$(who -b | awk '{print $3,$4}')
+    log "system" "Последняя загрузка системы: $last_boot"
 
-Projects / 22800 / 20x-80x / bzh / deploy / distr
-Project information
-Name: distr
-Namespace: Projects / 22800 / 20x-80x / bzh / deploy
-Owned by: Rukin Michail
-Created by: Rukin Michail
-Created on: Apr 25, 2024 9:01pm
-ID: 63
-http: https://sp-dk-git.seaproject.ru/seaprojects/22800/20x-80x/bzh/deploy/distr.git
-ssh: git@sp-dk-git.seaproject.ru:seaprojects/22800/20x-80x/bzh/deploy/distr.git
+    if journalctl -b -1 | grep -q "unexpected shutdown"; then
+        log "alerts" "ВНИМАНИЕ: Неожиданное завершение работы системы"
+    fi
+}
 
-probook@sp-nb-poke05:~$ ./distr.sh 22800
-Проект не найден: seaproject/22800
-probook@sp-nb-poke05:~$ ./distr.sh
-Ошибка запуска пайплайна:
-{"message":{"base":["You do not have sufficient permission to run a pipeline on 'main'. Please select a different branch or contact your administrator for assistance."]}}
-probook@sp-nb-poke05:~$ ./distr.sh
-Проект не найден: seaprojects/22800/20x-80x/bzh/deploy/distr
+# Мониторинг SSH
+monitor_ssh() {
+    local interval=60
+    local max_failures=3
+    local failure_count=0
+
+    while true; do
+        if ! nc -z localhost 22; then
+            ((failure_count++))
+            log "ssh" "Ошибка подключения SSH (попытка $failure_count/$max_failures)"
+
+            if [ $failure_count -ge $max_failures ]; then
+                log "ssh" "Критическая ошибка SSH - перезапуск сервиса"
+                systemctl restart ssh
+                failure_count=0
+            fi
+        else
+            failure_count=0
+        fi
+        sleep "$interval"
+    done
+}
+
+# Мониторинг диска
+monitor_disk() {
+    local interval=$(get_config "intervals" "disk")
+    local thresholds=$(get_config "disk" "thresholds" | tr ',' ' ')
+
+    while true; do
+        df -h | awk -v thresholds="$thresholds" '
+        NR>1 {
+            use=$5;
+            gsub("%","",use);
+            if(use > 90) {
+                print "CRITICAL: "$6" at "use"%"
+            } else if(use > 80) {
+                print "WARNING: "$6" at "use"%"
+            }
+        }' | while read -r alert; do
+            log "disk_alerts" "$alert"
+        done
+        sleep "$interval"
+    done
+}
 
 
-curl --request POST "https://sp-dk-git.seaproject.ru/api/v4/projects/63/pipeline" \
-     --header "PRIVATE-TOKEN: YOUR_GROUP_ACCESS_TOKEN" \
-     --form "ref=main"
+# Мониторинг сети
+monitor_network() {
+local interval=$(get_config "intervals" "network")
+while true; do
+for iface in $INTERFACES; do
+# Получаем базовый статус интерфейса
+if ip link show "$iface" | grep -q "state UP"; then
+status="UP"
+else
+status="DOWN"
+fi
+
+# Получаем все IPv4 адреса (если есть)
+ips=$(ip -4 -o addr show "$iface" 2>/dev/null | awk '{print $4}' | paste -sd ',')
+
+# Формируем строку для лога
+if [ -z "$ips" ]; then
+log_msg="$iface: $status"
+else
+log_msg="$iface: $status ($ips)"
+fi
+
+# Логируем
+log "network" "$log_msg"
+done
+sleep "$interval"
+done
+}
+
+# Запуск мониторов
+monitor_cpu_ram_temp &
+echo $! > "$PID_FILE"
+monitor_network &
+echo $! >> "$PID_FILE"
+monitor_disk &
+echo $! >> "$PID_FILE"
+check_reboot  # Не в фоне, чтобы выполнилось сразу
+monitor_ssh &
+echo $! >> "$PID_FILE"
+
+# Ожидание завершения
+wait
