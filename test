@@ -170,3 +170,60 @@ if ($syslogtag == 'systemd' or $programname == 'systemd') and \
     stop
 }
 
+
+# Функция для парсинга конфига
+get_config() {
+    awk -F ' = ' -v section="$1" -v key="$2" '
+        $0 ~ /^\[.*\]/ {
+            gsub(/\[|\]/, "", $0)
+            current_section = $0
+        }
+        current_section == section && $1 == key {
+            gsub(/\"/, "", $2)
+            print $2
+        }
+    ' "$CONFIG_FILE"
+}
+● system-monitor.service - System Monitoring Service
+     Loaded: loaded (/etc/systemd/system/system-monitor.service; enabled; vendor preset: enabled)
+     Active: active (running) since Mon 2025-05-05 15:33:34 UTC; 17s ago
+   Main PID: 2763998 (system-monitor.)
+      Tasks: 9 (limit: 2271)
+     Memory: 3.4M
+     CGroup: /system.slice/system-monitor.service
+             ├─2763998 /bin/bash /usr/local/bin/system-monitor.sh
+             ├─2764010 /bin/bash /usr/local/bin/system-monitor.sh
+             ├─2764011 /bin/bash /usr/local/bin/system-monitor.sh
+             ├─2764013 /bin/bash /usr/local/bin/system-monitor.sh
+             ├─2764047 /bin/bash /usr/local/bin/system-monitor.sh
+             ├─2764053 sleep 60
+             ├─2764239 sleep 30
+             ├─2783142 sleep 3
+             ├─2785510 df -h
+             ├─2785511 /bin/bash /usr/local/bin/system-monitor.sh
+             └─2785512 /bin/bash /usr/local/bin/system-monitor.sh
+
+May 05 15:33:51 zephyr system-monitor[2785490]: sleep: invalid time interval ‘’
+May 05 15:33:51 zephyr system-monitor[2785490]: Try 'sleep --help' for more information.
+May 05 15:33:51 zephyr system-monitor[2785494]: sleep: invalid time interval ‘’
+May 05 15:33:51 zephyr system-monitor[2785494]: Try 'sleep --help' for more information.
+May 05 15:33:51 zephyr system-monitor[2785498]: sleep: invalid time interval ‘’
+May 05 15:33:51 zephyr system-monitor[2785498]: Try 'sleep --help' for more information.
+May 05 15:33:51 zephyr system-monitor[2785502]: sleep: invalid time interval ‘’
+May 05 15:33:51 zephyr system-monitor[2785502]: Try 'sleep --help' for more information.
+May 05 15:33:51 zephyr system-monitor[2785509]: sleep: invalid time interval ‘’
+May 05 15:33:51 zephyr system-monitor[2785509]: Try 'sleep --help' for more information.
+
+[main]
+log_dir = /var/log/system_monitor
+pid_file = /var/run/system_monitor.pid
+
+[intervals]
+cpu_ram = 30
+services = 10
+kernel = 10
+network = 3
+
+[network]
+interfaces = eth0,wlan0
+
