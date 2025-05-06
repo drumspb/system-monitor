@@ -279,3 +279,90 @@ get_config() {
 
 # exclude = nfs-idmapd|dnsmasq|systemd-networkd-wait-online
 
+
+##########################################
+# Модули
+##########################################
+module(load="imuxsock")                           # приём логов от приложений через /dev/log
+module(load="imklog")                             # чтение логов ядра (/proc/kmsg)
+module(load="imjournal" StateFile="imjournal.state") # подключение к systemd-journald
+
+##########################################
+# Общие параметры
+##########################################
+$MaxMessageSize 64k
+$WorkDirectory /var/spool/rsyslog
+$ActionFileDefaultTemplate RSYSLOG_TraditionalFileFormat
+
+##########################################
+# Каталог логов (создайте вручную)
+# sudo mkdir -p /var/log/system_monitor
+# sudo chown syslog:adm /var/log/system_monitor
+# sudo chmod 750 /var/log/system_monitor
+##########################################
+
+##########################################
+# 1. Мониторинг systemd (с исключениями)
+##########################################
+if $programname startswith 'systemd' and \
+   $programname != 'systemd-networkd-wait-online' and \
+   $programname != 'dnsmasq' and \
+   $programname != 'nfs-idmapd' then {
+
+    if $msg contains ['Failed', 'failed'] then {
+        /var/log/system_monitor/systemd_errors.log
+    }
+
+    /var/log/system_monitor/systemd.log
+    stop
+}
+
+##########################################
+# 2. Логи roslaunch
+##########################################
+if $programname startswith 'roslaunch' then {
+    /var/log/system_monitor/roslaunch.log
+    stop
+}
+
+##########################################
+# 3. Ошибки ROS
+##########################################
+if $programname startswith 'ros' then {
+    if $msg contains 'ERROR' then {
+        /var/log/system_monitor/ros_errors.log
+    }
+    stop
+}
+
+##########################################
+# 4. Критические сообщения ядра
+##########################################
+kern.crit     /var/log/system_monitor/kernel_critical.log
+
+##########################################
+# 5. Аварии ядра и аппаратные ошибки
+##########################################
+:msg, contains, "Kernel panic"           /var/log/system_monitor/kernel_critical.log
+:msg, contains, "BUG:"                   /var/log/system_monitor/kernel_critical.log
+:msg, contains, "Hardware Error"         /var/log/system_monitor/hardware_errors.log
+:msg, contains, "Machine check events"   /var/log/system_monitor/hardware_errors.log
+
+##########################################
+# 6. Ошибки памяти и ресурсов
+##########################################
+:msg, contains, "Out of memory"              /var/log/system_monitor/system_errors.log
+:msg, contains, "Killed process"             /var/log/system_monitor/system_errors.log
+:msg, contains, "No space left on device"    /var/log/system_monitor/system_errors.log
+
+##########################################
+# 7. Общие критичные сообщения (все источники)
+##########################################
+:syslogseverity <= 3                         /var/log/system_monitor/critical.log
+
+##########################################
+# 8. Сетевые ошибки
+##########################################
+:msg, contains, "link is down"              /var/log/system_monitor/network_errors.log
+:msg, contains, "Network is unreachable"    /var/log/system_monitor/network_errors.log
+
