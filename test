@@ -253,4 +253,29 @@ get_config() {
     done < "$CONFIG_FILE"
 }
 
+# Мониторинг systemd (падения служб)
+:programname, startswith, "systemd" {
+    /var/log/system_monitor/systemd.log
+    stop
+}
+
+# Фильтр для критических сообщений systemd
+:msg, contains, "failed" /var/log/system_monitor/systemd_errors.log
+:msg, contains, "Failed" /var/log/system_monitor/systemd_errors.log
+
+# Перенаправление roslaunch логов
+:programname, startswith, "roslaunch" {
+    /var/log/system_monitor/roslaunch.log
+    stop
+}
+
+# Логирование ошибок ROS
+:programname, startswith, "ros" {
+    if $msg contains "ERROR" then {
+        /var/log/system-monitor/ros_errors.log
+    }
+    stop
+}
+
+# exclude = nfs-idmapd|dnsmasq|systemd-networkd-wait-online
 
