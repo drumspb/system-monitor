@@ -379,3 +379,26 @@ while true; do
     sleep 10
 done
 
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Камера</title>
+  <meta charset="UTF-8">
+  <style>
+    body { text-align: center; background: #000; color: white; }
+    img { max-width: 100%; height: auto; }
+  </style>
+</head>
+<body>
+  <h1>Прямая картинка с камеры</h1>
+  <img id="cam" src="snapshot.jpg" alt="Камера">
+  <script>
+    setInterval(() => {
+      const img = document.getElementById('cam');
+      img.src = 'snapshot.jpg?t=' + new Date().getTime(); // чтобы избежать кеша
+    }, 10000); // обновление каждые 10 секунд
+  </script>
+</body>
+</html>
+
