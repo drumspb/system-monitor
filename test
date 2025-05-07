@@ -366,3 +366,16 @@ kern.crit     /var/log/system_monitor/kernel_critical.log
 :msg, contains, "link is down"              /var/log/system_monitor/network_errors.log
 :msg, contains, "Network is unreachable"    /var/log/system_monitor/network_errors.log
 
+
+#!/bin/bash
+
+RTSP_URL="rtsp://login:pass@ip/stream"
+OUT_DIR="/tmp/camshots"
+mkdir -p "$OUT_DIR"
+
+while true; do
+    TIMESTAMP=$(date +%s)
+    ffmpeg -rtsp_transport tcp -i "$RTSP_URL" -vframes 1 -q:v 2 "$OUT_DIR/snapshot.jpg" -y -loglevel quiet
+    sleep 10
+done
+
