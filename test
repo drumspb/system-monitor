@@ -406,3 +406,72 @@ done
 
 python3 -m http.server 8080 --directory /tmp/camshots
 
+
+# System Monitoring Installer
+
+[![CI/CD Pipeline](https://gitlab.com/<your-namespace>/<your-project>/badges/main/pipeline.svg)](https://gitlab.com/<your-namespace>/<your-project>/-/pipelines)
+[![Download Latest](https://img.shields.io/badge/download-.deb-blue)](https://gitlab.com/<your-namespace>/<your-project>/-/packages)
+
+Этот пакет устанавливает конфигурации для мониторинга системы.
+
+## Установка
+
+1. Загрузите последнюю версию `.deb`-пакета с [Package Registry GitLab](https://gitlab.com/<your-namespace>/<your-project>/-/packages).
+2. Установите его с помощью команды:
+
+   ```bash
+   sudo dpkg -i system-monitoring_<version>.deb
+
+
+Вот обновлённый `README.md` с интеграцией GitLab: значок CI/CD и ссылка на скачивание последней версии `.deb` из Package Registry:
+
+````markdown
+# System Monitoring Installer
+
+[![CI/CD Pipeline](https://gitlab.com/<your-namespace>/<your-project>/badges/main/pipeline.svg)](https://gitlab.com/<your-namespace>/<your-project>/-/pipelines)
+[![Download Latest](https://img.shields.io/badge/download-.deb-blue)](https://gitlab.com/<your-namespace>/<your-project>/-/packages)
+
+Этот пакет устанавливает конфигурации для мониторинга системы.
+
+## Установка
+
+1. Загрузите последнюю версию `.deb`-пакета с [Package Registry GitLab](https://gitlab.com/<your-namespace>/<your-project>/-/packages).
+2. Установите его с помощью команды:
+
+   ```bash
+   sudo dpkg -i system-monitoring_<version>.deb
+````
+
+Замените `<version>` на актуальную версию, например:
+
+```bash
+sudo dpkg -i system-monitoring_1.0.3.deb
+```
+
+## Удаление конфигураций мониторинга
+
+Чтобы удалить все установленные конфигурации мониторинга, выполните:
+
+```bash
+sudo disable_monitoring
+```
+
+Этот бинарный файл входит в пакет и автоматически отключит все службы и удалит связанные файлы.
+
+## Требования
+
+* Операционная система: Ubuntu 20.04+, Debian 10+
+* Права суперпользователя (`sudo`)
+
+---
+
+Для вопросов и предложений создайте issue в [репозитории проекта](https://gitlab.com/<your-namespace>/<your-project>).
+
+```
+
+🔧 **Не забудь заменить**:
+- `<your-namespace>` на имя группы или пользователя в GitLab
+- `<your-project>` на название проекта
+
+Хочешь, чтобы я сразу подставил конкретные ссылки, если ты дашь название проекта и группы?
+```
