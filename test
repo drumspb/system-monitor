@@ -492,3 +492,68 @@ done
 udevadm control --reload-rules
 echo "Created rules for $i interfaces. Reboot to apply."
 ```
+
+#!/bin/bash
+
+TMP_RULE="/etc/udev/rules.d/70-temp-net.rules"
+FINAL_RULE="/etc/udev/rules.d/71-persistent-net-custom.rules"
+BACKUP_DIR="/tmp/udev-net-rename-backup"
+mkdir -p "$BACKUP_DIR"
+
+active_macs=()
+inactive_macs=()
+
+# Получаем все интерфейсы кроме lo
+interfaces=($(ls /sys/class/net | grep -v '^lo$' | sort))
+
+echo "[1/3] Начинаем проверку линка для каждого интерфейса..."
+
+for iface in "${interfaces[@]}"; do
+    mac=$(cat /sys/class/net/"$iface"/address)
+
+    echo "SUBSYSTEM==\"net\", ACTION==\"add\", ATTR{address}==\"$mac\", NAME=\"eth0\"" > "$TMP_RULE"
+    udevadm control --reload-rules
+    udevadm trigger --attr-match=subsystem=net
+
+    # Подождем, пока правило применится
+    sleep 2
+
+    # Проверим operstate у eth0
+    if [[ -e /sys/class/net/eth0/operstate ]]; then
+        state=$(cat /sys/class/net/eth0/operstate)
+        echo "Интерфейс $iface (MAC $mac) как eth0 в состоянии: $state"
+        if [[ "$state" == "up" ]]; then
+            active_macs+=("$mac")
+        else
+            inactive_macs+=("$mac")
+        fi
+    else
+        echo "Интерфейс $iface (MAC $mac) не появился как eth0. Пропускаем."
+        inactive_macs+=("$mac")
+    fi
+done
+
+# Создаем итоговый udev-файл
+echo "[2/3] Создаём финальные правила в $FINAL_RULE..."
+echo "# Final persistent interface naming rules" > "$FINAL_RULE"
+
+i=0
+for mac in "${active_macs[@]}"; do
+    echo "SUBSYSTEM==\"net\", ACTION==\"add\", ATTR{address}==\"$mac\", NAME=\"eth$i\"" >> "$FINAL_RULE"
+    ((i++))
+done
+
+for mac in "${inactive_macs[@]}"; do
+    echo "SUBSYSTEM==\"net\", ACTION==\"add\", ATTR{address}==\"$mac\", NAME=\"eth$i\"" >> "$FINAL_RULE"
+    ((i++))
+done
+
+rm -f "$TMP_RULE"
+udevadm control --reload-rules
+
+echo "[3/3] Готово. Назначено:"
+echo "  - Активных интерфейсов (UP): ${#active_macs[@]}"
+echo "  - Неактивных интерфейсов: ${#inactive_macs[@]}"
+echo "Файл правил: $FINAL_RULE"
+echo "⚠️ Перезагрузите систему, чтобы правила применились."
+
