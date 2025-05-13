@@ -474,4 +474,21 @@ sudo disable_monitoring
 - `<your-project>` на название проекта
 
 Хочешь, чтобы я сразу подставил конкретные ссылки, если ты дашь название проекта и группы?
+
+
+#!/bin/bash
+
+UDEV_RULES_FILE="/etc/udev/rules.d/71-persistent-net-custom.rules"
+
+echo "# Simple network renaming rules" > "$UDEV_RULES_FILE"
+
+i=0
+for dev in $(ls /sys/class/net | grep -v '^lo$' | sort); do
+    mac=$(cat "/sys/class/net/$dev/address" 2>/dev/null)
+    [[ -n "$mac" ]] && echo "SUBSYSTEM==\"net\", ACTION==\"add\", ATTR{address}==\"$mac\", NAME=\"eth$i\"" >> "$UDEV_RULES_FILE"
+    ((i++))
+done
+
+udevadm control --reload-rules
+echo "Created rules for $i interfaces. Reboot to apply."
 ```
