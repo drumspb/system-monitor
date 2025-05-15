@@ -1,0 +1,159 @@
+cat <<'EOF' >/etc/init.d/netlink
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          netlink
+# Required-Start:    $network $local_fs $syslog
+# Required-Stop:     $network $local_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Network link watcher
+# Description:       Monitors physical cable connection
+### END INIT INFO
+
+NAME="netlink"
+DAEMON="/usr/bin/netlink.sh"
+PIDFILE="/var/run/$NAME.pid"
+LOGFILE="/var/log/$NAME.log"
+SCRIPT_USER="root"
+
+case "$1" in
+    start)
+        echo -n "Starting $NAME: "
+        if [ -f "$PIDFILE" ]; then
+            if ps -p $(cat "$PIDFILE") > /dev/null; then
+                echo "already running"
+                exit 1
+            fi
+        fi
+        start-stop-daemon --start --quiet --background \
+            --pidfile "$PIDFILE" \
+            --make-pidfile \
+            --chuid "$SCRIPT_USER" \
+            --exec "$DAEMON"
+        echo "OK"
+        ;;
+    stop)
+        echo -n "Stopping $NAME: "
+        if [ ! -f "$PIDFILE" ]; then
+            echo "not running"
+            exit 1
+        fi
+        start-stop-daemon --stop --quiet --pidfile "$PIDFILE"
+        rm -f "$PIDFILE"
+        echo "OK"
+        ;;
+    restart)
+        $0 stop
+        sleep 2
+        $0 start
+        ;;
+    status)
+        if [ -f "$PIDFILE" ]; then
+            if ps -p $(cat "$PIDFILE") > /dev/null; then
+                echo "$NAME is running (pid $(cat "$PIDFILE"))"
+            else
+                echo "$NAME pid file exists but process not running"
+            fi
+        else
+            echo "$NAME is not running"
+        fi
+        ;;
+    *)
+        echo "Usage: /etc/init.d/$NAME {start|stop|restart|status}"
+        exit 1
+        ;;
+esac
+
+exit 0
+EOF
+
+cat <<'EOF' > /usr/bin/netlink.sh
+#!/bin/bash
+
+### Конфигурация
+IFACE="enp0s0"
+STATE_FILE="/tmp/.${IFACE}_carrier_state"
+LOGFILE="/var/log/netlink-watcher.log"
+MAIN_IP=$(grep -E "^([\t ]+)address" /etc/network/interfaces | grep -o -E "([0-9.]+)")
+RESERVE_IP=$(echo $MAIN_IP | sed "s/108/109/g")
+MAIN_ROUTE=$(echo $MAIN_IP | grep -o -E "([0-9.]{3}+)")
+R_ROUTE=$(echo $RESERVE_IP | grep -o -E "([0-9.]{3}+)")
+S_MAIN_IP1="192.168.108.2"
+S_MAIN_IP2="192.168.109.2"
+S_RESERVE_IP1="192.168.108.4"
+S_RESERVE_IP2="192.168.109.4"
+
+### Получение текущего состояния carrier
+get_carrier_state() {
+    cat "/sys/class/net/$IFACE/carrier" 2>/dev/null
+}
+
+### Инициализация начального состояния
+LAST_STATE=$(get_carrier_state)
+echo "$LAST_STATE" > "$STATE_FILE"
+
+### основной скрипт, замена ip ###
+change_ip(){
+    # Проверка блокировки
+    if [ -f "/var/run/reassign.pid" ]; then
+        echo "[$(date '+%F %T')] Script already running" >> "$LOGFILE"
+        return 0
+    fi
+    touch "/var/run/reassign.pid"
+    
+    # Добавляем оба адреса
+    /sbin/ifconfig "$IFACE" up
+    ip addr add ${MAIN_IP}/24 dev "$IFACE" >/dev/null 2>&1
+    ip addr add ${RESERVE_IP}/24 dev "$IFACE" >/dev/null 2>&1
+    ip route add ${MAIN_ROUTE}.0/24 dev "$IFACE" >/dev/null 2>&1
+    ip route add ${R_ROUTE}.0/24 dev "$IFACE" >/dev/null 2>&1
+    sleep 2
+
+    # Проверяем доступность
+    if ping -c1 -W1 $S_MAIN_IP1 >/dev/null 2>&1 || ping -c1 -W1 $S_RESERVE_IP1 >/dev/null 2>&1; then
+        ip addr del ${RESERVE_IP}/24 dev "$IFACE" >/dev/null 2>&1
+        ip route del ${R_ROUTE}.0/24 dev "$IFACE" >/dev/null 2>&1
+        sed -i 's/109/108/g' /etc/hosts
+    elif ping -c1 -W1 $S_MAIN_IP2 >/dev/null 2>&1 || ping -c1 -W1 $S_RESERVE_IP2 >/dev/null 2>&1; then
+        ip addr del ${MAIN_IP}/24 dev "$IFACE" >/dev/null 2>&1
+        ip route del ${MAIN_ROUTE}.0/24 dev "$IFACE" >/dev/null 2>&1
+        sed -i 's/108/109/g' /etc/hosts
+    else
+        ip addr del ${RESERVE_IP}/24 dev "$IFACE" >/dev/null 2>&1
+        ip route del ${R_ROUTE}.0/24 dev "$IFACE" >/dev/null 2>&1
+        sed -i 's/109/108/g' /etc/hosts
+    fi
+
+    rm -f /var/run/reassign.pid
+}
+
+change_ip
+
+### Бесконечный цикл опроса
+while true; do
+    sleep 2
+
+    CURRENT_STATE=$(get_carrier_state)
+    PREV_STATE=$(cat "$STATE_FILE" 2>/dev/null)
+
+    if [ "$CURRENT_STATE" != "$PREV_STATE" ]; then
+        echo "[$(date +'%F %T')] Carrier changed on $IFACE: $PREV_STATE -> $CURRENT_STATE" >> "$LOGFILE"
+
+        if [ "$CURRENT_STATE" = "1" ]; then
+            echo "[$(date +'%F %T')] Running network reconfiguration" >> "$LOGFILE"
+            change_ip >> "$LOGFILE" 2>&1
+        fi
+
+        echo "$CURRENT_STATE" > "$STATE_FILE"
+    fi
+done
+EOF
+
+
+
+
+chmod +x /etc/init.d/netlink
+chmod +x /usr/bin/netlink.sh
+update-rc.d netlink defaults
+service netlink start
+service netlink status
