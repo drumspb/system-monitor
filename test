@@ -557,3 +557,48 @@ echo "  - Неактивных интерфейсов: ${#inactive_macs[@]}"
 echo "Файл правил: $FINAL_RULE"
 echo "⚠️ Перезагрузите систему, чтобы правила применились."
 
+
+#!/bin/bash
+
+# Цвета
+GREEN="\033[1;32m"
+YELLOW="\033[1;33m"
+RED="\033[1;31m"
+NC="\033[0m" # no color
+
+echo -e "${YELLOW}Проверка сетевых менеджеров...${NC}"
+
+# Netplan
+if [ -d /etc/netplan ]; then
+    echo -e "${GREEN}Netplan обнаружен:${NC} /etc/netplan"
+    for f in /etc/netplan/*.yaml; do
+        grep renderer "$f" && echo -e "${YELLOW} (из файла $f)${NC}"
+    done
+else
+    echo -e "${RED}Netplan не найден.${NC}"
+fi
+
+# NetworkManager
+if systemctl is-active --quiet NetworkManager; then
+    echo -e "${GREEN}NetworkManager${NC} активен"
+else
+    echo -e "${YELLOW}NetworkManager${NC} не активен"
+fi
+
+# systemd-networkd
+if systemctl is-active --quiet systemd-networkd; then
+    echo -e "${GREEN}systemd-networkd${NC} активен"
+else
+    echo -e "${YELLOW}systemd-networkd${NC} не активен"
+fi
+
+# ifupdown
+if [ -f /etc/network/interfaces ]; then
+    if grep -q "iface" /etc/network/interfaces; then
+        echo -e "${GREEN}ifupdown${NC} (файл /etc/network/interfaces используется)"
+    else
+        echo -e "${YELLOW}/etc/network/interfaces есть, но iface не найден${NC}"
+    fi
+else
+    echo -e "${RED}/etc/network/interfaces не найден${NC}"
+fi
