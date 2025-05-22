@@ -1,5 +1,61 @@
+##########################################
+# Модули (только те, что не дублируются!)
+##########################################
+module(load="imjournal" StateFile="imjournal.state") # Подключение к systemd-journald
+
+##########################################
+# Кастомный шаблон времени
+##########################################
 template(name="CustomTimeFormat" type="string"
          string="[%timegenerated:::date-%Y-%m-%d %H:%M:%S%] %HOSTNAME% %syslogtag% %msg%\n")
+
+##########################################
+# Общие параметры
+##########################################
+$MaxMessageSize 64k
+$WorkDirectory /var/spool/rsyslog
+
+# Мониторинг systemd
+if $programname startswith 'systemd' and \
+   $programname != 'systemd-networkd-wait-online' and \
+   $programname != 'dnsmasq' and \
+   $programname != 'nfs-idmapd' then {
+
+    if $msg contains 'Failed' or $msg contains 'failed' then {
+        action(type="omfile" file="/var/log/system_monitor/systemd_errors.log" template="CustomTimeFormat")
+    }
+
+    action(type="omfile" file="/var/log/system_monitor/systemd.log" template="CustomTimeFormat")
+    stop
+}
+
+# Логи roslaunch
+if $programname startswith 'roslaunch' then {
+    action(type="omfile" file="/var/log/system_monitor/roslaunch.log" template="CustomTimeFormat")
+    stop
+}
+
+# Ошибки ROS
+if $programname startswith 'ros' then {
+    if $msg contains 'ERROR' then {
+        action(type="omfile" file="/var/log/system_monitor/ros_errors.log" template="CustomTimeFormat")
+    }
+    stop
+}
+
+# Критические сообщения ядра
+if $syslogseverity <= 2 then {
+    action(type="omfile" file="/var/log/system_monitor/kernel_critical.log" template="CustomTimeFormat")
+}
+
+# Аварии ядра и аппаратные ошибки
+if $msg contains "Kernel panic" or $msg contains "BUG:" then {
+    action(type="omfile" file="/var/log/system_monitor/kernel_critical.log" template="CustomTimeFormat")
+}
+
+if $msg contains "Hardware Error" or $msg contains "Machine check events" then {
+    action(type="
+
 
 
 
