@@ -1,3 +1,8 @@
+template(name="CustomTimeFormat" type="string"
+         string="[%timegenerated:::date-%Y-%m-%d %H:%M:%S%] %HOSTNAME% %syslogtag% %msg%\n")
+
+
+
 #!/bin/bash
 
 # Загрузка конфигурации
