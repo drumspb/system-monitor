@@ -79,5 +79,51 @@ admin@node1:/root$ sudo systemctl status ceph-mon@node1
      CGroup: /system.slice/system-ceph\x2dmon.slice/ceph-mon@node1.service
              └─659443 /usr/bin/ceph-mon -f --cluster ceph --id node1 --setuser ceph --setgroup ceph
 
+
+
+● ceph-mon@node1.service - Ceph cluster monitor daemon
+     Loaded: loaded (/lib/systemd/system/ceph-mon@.service; enabled; preset: enabled)
+    Drop-In: /etc/systemd/system/ceph-mon@.service.d
+             └─ceph-mon-override.conf
+     Active: active (running) since Wed 2025-05-28 12:17:05 MSK; 3s ago
+   Main PID: 661077 (ceph-mon)
+      Tasks: 24
+     Memory: 12.4M
+        CPU: 213ms
+     CGroup: /system.slice/system-ceph\x2dmon.slice/ceph-mon@node1.service
+             └─661077 /usr/bin/ceph-mon -f --cluster ceph --id node1 --setuser ceph --setgroup ceph
+
+мая 28 12:17:05 node1 systemd[1]: Started ceph-mon@node1.service - Ceph cluster monitor daemon.
+admin@node1:/root$ ceph -s
+Error initializing cluster client: ObjectNotFound('RADOS object not found (error calling conf_read_file)')
+admin@node1:/root$ sudo rm -f /etc/ceph/ceph.client.admin.keyring
+admin@node1:/root$ sudo ceph-authtool --create-keyring /etc/ceph/ceph.client.admin.keyring \
+--gen-key -n client.admin --cap mon 'allow *' --cap osd 'allow *' \
+--cap mds 'allow *' --cap mgr 'allow *'
+creating /etc/ceph/ceph.client.admin.keyring
+admin@node1:/root$ ceph -s
+Error initializing cluster client: ObjectNotFound('RADOS object not found (error calling conf_read_file)')
+admin@node1:/root$ sudo chown -R ceph:ceph /etc/ceph/ceph.client.admin.keyring
+admin@node1:/root$ sudo chmod 600 /etc/ceph/ceph.client.admin.keyring
+admin@node1:/root$ ceph -s
+Error initializing cluster client: ObjectNotFound('RADOS object not found (error calling conf_read_file)')
+admin@node1:/root$ sudo chown -R ceph:ceph /etc/ceph/
+ceph.client.admin.keyring  ceph.conf                  rbdmap
+admin@node1:/root$ sudo chown -R ceph:ceph /etc/ceph/ceph.conf
+admin@node1:/root$ sudo chmod 600 /etc/ceph/ceph.conf
+admin@node1:/root$ ceph -s
+Error initializing cluster client: ObjectNotFound('RADOS object not found (error calling conf_read_file)')
+admin@node1:/root$ sudo nano /etc/ceph/ceph.conf
+admin@node1:/root$ sudo cat /etc/ceph/ceph.conf
+[global]
+fsid = 95c110f3-5b1a-4251-90b8-cf46b1bfedb4
+mon initial members = node1
+mon host = 10.0.2.11
+public network = 10.0.2.0/24
+cluster network = 10.0.4.0/24
+auth_allow_insecure_global_id_reclaim = false
+osd_pool_default_pg_autoscale_mode = off
+
+
 мая 28 12:13:00 node1 systemd[1]: Started ceph-mon@node1.service - Ceph cluster monitor daemon.
 
