@@ -50,3 +50,34 @@ admin@node1:/root$ sudo -u ceph /usr/bin/ceph-mon -f -i node1 --cluster ceph --l
 too many arguments: [--log-stderr]
 admin@node1:/root$ sudo -u ceph /usr/bin/ceph-mon -f -i node1 --cluster ceph --debug-mon 20
 2025-05-28T12:03:23.231+0300 74c892408dc0 -1 unable to read magic from mon data
+
+● ceph-mon@node1.service - Ceph cluster monitor daemon
+     Loaded: loaded (/lib/systemd/system/ceph-mon@.service; enabled; preset: enabled)
+    Drop-In: /etc/systemd/system/ceph-mon@.service.d
+             └─ceph-mon-override.conf
+     Active: active (running) since Wed 2025-05-28 12:13:00 MSK; 6s ago
+   Main PID: 659443 (ceph-mon)
+      Tasks: 24
+     Memory: 12.4M
+        CPU: 221ms
+     CGroup: /system.slice/system-ceph\x2dmon.slice/ceph-mon@node1.service
+             └─659443 /usr/bin/ceph-mon -f --cluster ceph --id node1 --setuser ceph --setgroup ceph
+
+мая 28 12:13:00 node1 systemd[1]: Started ceph-mon@node1.service - Ceph cluster monitor daemon.
+admin@node1:/root$ ceph -s
+Error initializing cluster client: ObjectNotFound('RADOS object not found (error calling conf_read_file)')
+admin@node1:/root$ sudo systemctl status ceph-mon@node1
+● ceph-mon@node1.service - Ceph cluster monitor daemon
+     Loaded: loaded (/lib/systemd/system/ceph-mon@.service; enabled; preset: enabled)
+    Drop-In: /etc/systemd/system/ceph-mon@.service.d
+             └─ceph-mon-override.conf
+     Active: active (running) since Wed 2025-05-28 12:13:00 MSK; 42s ago
+   Main PID: 659443 (ceph-mon)
+      Tasks: 24
+     Memory: 12.5M
+        CPU: 248ms
+     CGroup: /system.slice/system-ceph\x2dmon.slice/ceph-mon@node1.service
+             └─659443 /usr/bin/ceph-mon -f --cluster ceph --id node1 --setuser ceph --setgroup ceph
+
+мая 28 12:13:00 node1 systemd[1]: Started ceph-mon@node1.service - Ceph cluster monitor daemon.
+
