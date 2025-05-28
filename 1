@@ -1,0 +1,52 @@
+admin@node1:/root$ sudo systemctl stop ceph-mon@node1
+sudo rm -rf /var/lib/ceph/mon/ceph-node1/
+sudo mkdir -p /var/lib/ceph/mon/ceph-node1
+admin@node1:/root$ sudo monmaptool --create --clobber --add node1 10.0.2.11 \
+--fsid 95c110f3-5b1a-4251-90b8-cf46b1bfedb4 /tmp/monmap
+monmaptool: monmap file /tmp/monmap
+setting min_mon_release = octopus
+monmaptool: set fsid to 95c110f3-5b1a-4251-90b8-cf46b1bfedb4
+monmaptool: writing epoch 0 to /tmp/monmap (1 monitors)
+bufferlist::write_file(/tmp/monmap): failed to open file: (13) Permission denied
+monmaptool: error writing to '/tmp/monmap': (13) Permission denied
+admin@node1:/root$ sudo -rm /tmp/monmap
+/tmp/monmap: /tmp/monmap: не удаётся запустить бинарный файл
+admin@node1:/root$ sudo rm -f /tmp/monmap
+admin@node1:/root$ sudo monmaptool --create --clobber --add node1 10.0.2.11 --fsid 95c110f3-5b1a-4251-90b8-cf46b1bfedb4 /tmp/monmap
+monmaptool: monmap file /tmp/monmap
+setting min_mon_release = octopus
+monmaptool: set fsid to 95c110f3-5b1a-4251-90b8-cf46b1bfedb4
+monmaptool: writing epoch 0 to /tmp/monmap (1 monitors)
+admin@node1:/root$ sudo ceph-authtool --create-keyring /tmp/ceph.mon.keyring --gen-key -n mon. \
+--cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow *' --cap mgr 'allow *'
+creating /tmp/ceph.mon.keyring
+admin@node1:/root$ sudo -u ceph /usr/bin/ceph-mon --mkfs -i node1 --monmap /tmp/monmap \
+--keyring /tmp/ceph.mon.keyring --debug-mon 20 --debug-ms 20
+2025-05-28T11:56:26.003+0300 7c923618edc0 -1 /usr/bin/ceph-mon: error opening mon data directory at '/var/lib/ceph/mon/ceph-node1': (13) Permission denied
+admin@node1:/root$ journalctl -xeu ceph-mon@node1.service"^C
+admin@node1:/root$ sudo chown -R ceph:ceph /var/lib/ceph/mon/ceph-node1
+sudo chmod -R 700 /var/lib/ceph/mon/ceph-node1
+admin@node1:/root$ sudo -u ceph /usr/bin/ceph-mon --mkfs -i node1 --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring --debug-mon 20 --debug-ms 20
+2025-05-28T11:57:33.311+0300 7c0d6ad97dc0 -1 mon.node1@-1(???) e0 unable to find a keyring on /tmp/ceph.mon.keyring: (13) Permission denied
+2025-05-28T11:57:33.311+0300 7c0d6ad97dc0 -1 /usr/bin/ceph-mon: error creating monfs: (13) Permission denied
+admin@node1:/root$ sudo chown -R ceph:ceph /tmp/ceph.mon.keyring
+admin@node1:/root$ sudo -u ceph /usr/bin/ceph-mon --mkfs -i node1 --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring --debug-mon 20 --debug-ms 20
+admin@node1:/root$ sudo touch /var/lib/ceph/mon/ceph-node1/done
+echo "95c110f3-5b1a-4251-90b8-cf46b1bfedb4" | sudo tee /var/lib/ceph/mon/ceph-node1/fsid
+sudo touch /var/lib/ceph/mon/ceph-node1/magic
+95c110f3-5b1a-4251-90b8-cf46b1bfedb4
+admin@node1:/root$ sudo chown -R ceph:ceph /var/lib/ceph/mon/ceph-node1/
+sudo chmod -R 700 /var/lib/ceph/mon/ceph-node1/
+admin@node1:/root$ sudo ls -la /var/lib/ceph/mon/ceph-node1/
+итого 20
+drwx------ 3 ceph ceph 4096 мая 28 12:02 .
+drwxr-xr-x 3 ceph ceph 4096 мая 28 11:53 ..
+-rwx------ 1 ceph ceph    0 мая 28 12:02 done
+-rwx------ 1 ceph ceph   37 мая 28 12:02 fsid
+-rwx------ 1 ceph ceph    8 мая 28 11:57 kv_backend
+-rwx------ 1 ceph ceph    0 мая 28 12:02 magic
+drwx------ 2 ceph ceph 4096 мая 28 11:57 store.db
+admin@node1:/root$ sudo -u ceph /usr/bin/ceph-mon -f -i node1 --cluster ceph --log-stderr --debug-mon 20
+too many arguments: [--log-stderr]
+admin@node1:/root$ sudo -u ceph /usr/bin/ceph-mon -f -i node1 --cluster ceph --debug-mon 20
+2025-05-28T12:03:23.231+0300 74c892408dc0 -1 unable to read magic from mon data
