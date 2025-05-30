@@ -60,3 +60,25 @@ Define: DUMP_RUN_CFG
 User: name="www-data" id=33
 Group: name="www-data" id=33
 
+
+<VirtualHost *:443>
+    ServerName freeipa.seaproject-test.ru
+
+    SSLEngine on
+    SSLCertificateFile /var/lib/ipa/certs/httpd.pem
+    SSLCertificateKeyFile /var/lib/ipa/private/httpd.key
+    SSLCertificateChainFile /var/lib/ipa/certs/ca.crt
+
+    DocumentRoot /var/www/html
+
+    ErrorLog ${APACHE_LOG_DIR}/error.log
+    CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+    <Directory /var/www/html>
+        Options FollowSymLinks
+        AllowOverride None
+        Require all granted
+    </Directory>
+</VirtualHost>
+
+
