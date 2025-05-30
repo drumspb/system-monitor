@@ -1,129 +1,40 @@
-admin@node1:/root$ sudo systemctl stop ceph-mon@node1
-sudo rm -rf /var/lib/ceph/mon/ceph-node1/
-sudo mkdir -p /var/lib/ceph/mon/ceph-node1
-admin@node1:/root$ sudo monmaptool --create --clobber --add node1 10.0.2.11 \
---fsid 95c110f3-5b1a-4251-90b8-cf46b1bfedb4 /tmp/monmap
-monmaptool: monmap file /tmp/monmap
-setting min_mon_release = octopus
-monmaptool: set fsid to 95c110f3-5b1a-4251-90b8-cf46b1bfedb4
-monmaptool: writing epoch 0 to /tmp/monmap (1 monitors)
-bufferlist::write_file(/tmp/monmap): failed to open file: (13) Permission denied
-monmaptool: error writing to '/tmp/monmap': (13) Permission denied
-admin@node1:/root$ sudo -rm /tmp/monmap
-/tmp/monmap: /tmp/monmap: не удаётся запустить бинарный файл
-admin@node1:/root$ sudo rm -f /tmp/monmap
-admin@node1:/root$ sudo monmaptool --create --clobber --add node1 10.0.2.11 --fsid 95c110f3-5b1a-4251-90b8-cf46b1bfedb4 /tmp/monmap
-monmaptool: monmap file /tmp/monmap
-setting min_mon_release = octopus
-monmaptool: set fsid to 95c110f3-5b1a-4251-90b8-cf46b1bfedb4
-monmaptool: writing epoch 0 to /tmp/monmap (1 monitors)
-admin@node1:/root$ sudo ceph-authtool --create-keyring /tmp/ceph.mon.keyring --gen-key -n mon. \
---cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow *' --cap mgr 'allow *'
-creating /tmp/ceph.mon.keyring
-admin@node1:/root$ sudo -u ceph /usr/bin/ceph-mon --mkfs -i node1 --monmap /tmp/monmap \
---keyring /tmp/ceph.mon.keyring --debug-mon 20 --debug-ms 20
-2025-05-28T11:56:26.003+0300 7c923618edc0 -1 /usr/bin/ceph-mon: error opening mon data directory at '/var/lib/ceph/mon/ceph-node1': (13) Permission denied
-admin@node1:/root$ journalctl -xeu ceph-mon@node1.service"^C
-admin@node1:/root$ sudo chown -R ceph:ceph /var/lib/ceph/mon/ceph-node1
-sudo chmod -R 700 /var/lib/ceph/mon/ceph-node1
-admin@node1:/root$ sudo -u ceph /usr/bin/ceph-mon --mkfs -i node1 --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring --debug-mon 20 --debug-ms 20
-2025-05-28T11:57:33.311+0300 7c0d6ad97dc0 -1 mon.node1@-1(???) e0 unable to find a keyring on /tmp/ceph.mon.keyring: (13) Permission denied
-2025-05-28T11:57:33.311+0300 7c0d6ad97dc0 -1 /usr/bin/ceph-mon: error creating monfs: (13) Permission denied
-admin@node1:/root$ sudo chown -R ceph:ceph /tmp/ceph.mon.keyring
-admin@node1:/root$ sudo -u ceph /usr/bin/ceph-mon --mkfs -i node1 --monmap /tmp/monmap --keyring /tmp/ceph.mon.keyring --debug-mon 20 --debug-ms 20
-admin@node1:/root$ sudo touch /var/lib/ceph/mon/ceph-node1/done
-echo "95c110f3-5b1a-4251-90b8-cf46b1bfedb4" | sudo tee /var/lib/ceph/mon/ceph-node1/fsid
-sudo touch /var/lib/ceph/mon/ceph-node1/magic
-95c110f3-5b1a-4251-90b8-cf46b1bfedb4
-admin@node1:/root$ sudo chown -R ceph:ceph /var/lib/ceph/mon/ceph-node1/
-sudo chmod -R 700 /var/lib/ceph/mon/ceph-node1/
-admin@node1:/root$ sudo ls -la /var/lib/ceph/mon/ceph-node1/
-итого 20
-drwx------ 3 ceph ceph 4096 мая 28 12:02 .
-drwxr-xr-x 3 ceph ceph 4096 мая 28 11:53 ..
--rwx------ 1 ceph ceph    0 мая 28 12:02 done
--rwx------ 1 ceph ceph   37 мая 28 12:02 fsid
--rwx------ 1 ceph ceph    8 мая 28 11:57 kv_backend
--rwx------ 1 ceph ceph    0 мая 28 12:02 magic
-drwx------ 2 ceph ceph 4096 мая 28 11:57 store.db
-admin@node1:/root$ sudo -u ceph /usr/bin/ceph-mon -f -i node1 --cluster ceph --log-stderr --debug-mon 20
-too many arguments: [--log-stderr]
-admin@node1:/root$ sudo -u ceph /usr/bin/ceph-mon -f -i node1 --cluster ceph --debug-mon 20
-2025-05-28T12:03:23.231+0300 74c892408dc0 -1 unable to read magic from mon data
+This step may take considerable amount of time, please wait..
+Done.
+Configuring client side components
+This program will set up IPA client.
+Version 4.11.3
 
-● ceph-mon@node1.service - Ceph cluster monitor daemon
-     Loaded: loaded (/lib/systemd/system/ceph-mon@.service; enabled; preset: enabled)
-    Drop-In: /etc/systemd/system/ceph-mon@.service.d
-             └─ceph-mon-override.conf
-     Active: active (running) since Wed 2025-05-28 12:13:00 MSK; 6s ago
-   Main PID: 659443 (ceph-mon)
-      Tasks: 24
-     Memory: 12.4M
-        CPU: 221ms
-     CGroup: /system.slice/system-ceph\x2dmon.slice/ceph-mon@node1.service
-             └─659443 /usr/bin/ceph-mon -f --cluster ceph --id node1 --setuser ceph --setgroup ceph
+Using existing certificate '/etc/ipa/ca.crt'.
+Client hostname: freeipa.seaproject-test.ru
+Realm: SEAPROJECT-TEST.RU
+DNS Domain: seaproject-test.ru
+IPA Server: freeipa.seaproject-test.ru
+BaseDN: dc=seaproject-test,dc=ru
 
-мая 28 12:13:00 node1 systemd[1]: Started ceph-mon@node1.service - Ceph cluster monitor daemon.
-admin@node1:/root$ ceph -s
-Error initializing cluster client: ObjectNotFound('RADOS object not found (error calling conf_read_file)')
-admin@node1:/root$ sudo systemctl status ceph-mon@node1
-● ceph-mon@node1.service - Ceph cluster monitor daemon
-     Loaded: loaded (/lib/systemd/system/ceph-mon@.service; enabled; preset: enabled)
-    Drop-In: /etc/systemd/system/ceph-mon@.service.d
-             └─ceph-mon-override.conf
-     Active: active (running) since Wed 2025-05-28 12:13:00 MSK; 42s ago
-   Main PID: 659443 (ceph-mon)
-      Tasks: 24
-     Memory: 12.5M
-        CPU: 248ms
-     CGroup: /system.slice/system-ceph\x2dmon.slice/ceph-mon@node1.service
-             └─659443 /usr/bin/ceph-mon -f --cluster ceph --id node1 --setuser ceph --setgroup ceph
-
-
-
-● ceph-mon@node1.service - Ceph cluster monitor daemon
-     Loaded: loaded (/lib/systemd/system/ceph-mon@.service; enabled; preset: enabled)
-    Drop-In: /etc/systemd/system/ceph-mon@.service.d
-             └─ceph-mon-override.conf
-     Active: active (running) since Wed 2025-05-28 12:17:05 MSK; 3s ago
-   Main PID: 661077 (ceph-mon)
-      Tasks: 24
-     Memory: 12.4M
-        CPU: 213ms
-     CGroup: /system.slice/system-ceph\x2dmon.slice/ceph-mon@node1.service
-             └─661077 /usr/bin/ceph-mon -f --cluster ceph --id node1 --setuser ceph --setgroup ceph
-
-мая 28 12:17:05 node1 systemd[1]: Started ceph-mon@node1.service - Ceph cluster monitor daemon.
-admin@node1:/root$ ceph -s
-Error initializing cluster client: ObjectNotFound('RADOS object not found (error calling conf_read_file)')
-admin@node1:/root$ sudo rm -f /etc/ceph/ceph.client.admin.keyring
-admin@node1:/root$ sudo ceph-authtool --create-keyring /etc/ceph/ceph.client.admin.keyring \
---gen-key -n client.admin --cap mon 'allow *' --cap osd 'allow *' \
---cap mds 'allow *' --cap mgr 'allow *'
-creating /etc/ceph/ceph.client.admin.keyring
-admin@node1:/root$ ceph -s
-Error initializing cluster client: ObjectNotFound('RADOS object not found (error calling conf_read_file)')
-admin@node1:/root$ sudo chown -R ceph:ceph /etc/ceph/ceph.client.admin.keyring
-admin@node1:/root$ sudo chmod 600 /etc/ceph/ceph.client.admin.keyring
-admin@node1:/root$ ceph -s
-Error initializing cluster client: ObjectNotFound('RADOS object not found (error calling conf_read_file)')
-admin@node1:/root$ sudo chown -R ceph:ceph /etc/ceph/
-ceph.client.admin.keyring  ceph.conf                  rbdmap
-admin@node1:/root$ sudo chown -R ceph:ceph /etc/ceph/ceph.conf
-admin@node1:/root$ sudo chmod 600 /etc/ceph/ceph.conf
-admin@node1:/root$ ceph -s
-Error initializing cluster client: ObjectNotFound('RADOS object not found (error calling conf_read_file)')
-admin@node1:/root$ sudo nano /etc/ceph/ceph.conf
-admin@node1:/root$ sudo cat /etc/ceph/ceph.conf
-[global]
-fsid = 95c110f3-5b1a-4251-90b8-cf46b1bfedb4
-mon initial members = node1
-mon host = 10.0.2.11
-public network = 10.0.2.0/24
-cluster network = 10.0.4.0/24
-auth_allow_insecure_global_id_reclaim = false
-osd_pool_default_pg_autoscale_mode = off
-
-
-мая 28 12:13:00 node1 systemd[1]: Started ceph-mon@node1.service - Ceph cluster monitor daemon.
-
+Configured /etc/sssd/sssd.conf
+cannot connect to 'https://freeipa.seaproject-test.ru/ipa/json': [SSL] record layer failure (_ssl.c:992)
+The ipa-client-install command failed. See /var/log/ipaclient-install.log for more information
+Configuration of client side components failed!
+The ipa-server-install command failed. See /var/log/ipaserver-install.log for more information
+Неудача. См. /var/log/astra-freeipa-server.log
+root@freeipa:~# ping freeipa.seaproject-test.ru
+curl -v https://freeipa.seaproject-test.ru/ipa/json
+PING freeipa.seaproject-test.ru (10.0.2.30) 56(84) bytes of data.
+64 bytes from freeipa.seaproject-test.ru (10.0.2.30): icmp_seq=1 ttl=64 time=0.057 ms
+64 bytes from freeipa.seaproject-test.ru (10.0.2.30): icmp_seq=2 ttl=64 time=0.045 ms
+64 bytes from freeipa.seaproject-test.ru (10.0.2.30): icmp_seq=3 ttl=64 time=0.052 ms
+64 bytes from freeipa.seaproject-test.ru (10.0.2.30): icmp_seq=4 ttl=64 time=0.055 ms
+^C
+--- freeipa.seaproject-test.ru ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3058ms
+rtt min/avg/max/mdev = 0.045/0.052/0.057/0.004 ms
+*   Trying 10.0.2.30:443...
+* Connected to freeipa.seaproject-test.ru (10.0.2.30) port 443 (#0)
+* ALPN: offers h2,http/1.1
+* TLSv1.3 (OUT), TLS handshake, Client hello (1):
+*  CAfile: /etc/ssl/certs/ca-certificates.crt
+*  CApath: /etc/ssl/certs
+* TLSv1.3 (OUT), TLS alert, record overflow (534):
+* OpenSSL/3.4.0: error:0A0000C6:SSL routines::packet length too long
+* Closing connection 0
+curl: (35) OpenSSL/3.4.0: error:0A0000C6:SSL routines::packet length too long
