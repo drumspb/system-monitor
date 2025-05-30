@@ -138,5 +138,24 @@ CalledProcessError(Command ['/usr/bin/certutil', '-d', 'sql:/etc/dirsrv/slapd-SE
 The ipa-server-install command failed. See /var/log/ipaserver-install.log for more information
 
 
+systemctl stop dirsrv.target
+systemctl stop pki-tomcatd@pki-tomcat.service
+systemctl stop httpd
+
+rm -rf /etc/ipa/
+rm -rf /var/lib/ipa/
+rm -rf /etc/pki/pki-tomcat/
+rm -rf /etc/dirsrv/
+rm -rf /var/lib/dirsrv/
+rm -rf /var/log/pki/
+rm -rf /var/log/dirsrv/
+rm -rf /var/log/ipa*
+rm -rf /etc/sysconfig/pki/
+rm -rf /etc/systemd/system/pki*
+
+# Удалим старую NSS-базу, если осталась:
+find /etc -name "cert8.db" -o -name "cert9.db" -o -name "key3.db" -o -name "key4.db" | xargs rm -f
+
+
 
 
