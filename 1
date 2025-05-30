@@ -130,4 +130,13 @@ root@freeipa:~# cat /etc/apache2/sites-available/000-default.conf
 root@freeipa:~#
 
 
+Done configuring certificate server (pki-tomcatd).
+Configuring directory server (dirsrv)
+  [1/3]: configuring TLS for DS instance
+  [error] CalledProcessError: CalledProcessError(Command ['/usr/bin/certutil', '-d', 'sql:/etc/dirsrv/slapd-SEAPROJECT-TEST-RU/', '-A', '-n', 'SEAPROJECT-TEST.RU IPA CA', '-t', 'CT,C,C', '-a', '-f', '/etc/dirsrv/slapd-SEAPROJECT-TEST-RU/pwdfile.txt'] returned non-zero exit status 255: 'certutil: could not decode certificate: SEC_ERROR_REUSED_ISSUER_AND_SERIAL: You are attempting to import a cert with the same issuer/serial as an existing cert, but that is not the same cert.\n')
+CalledProcessError(Command ['/usr/bin/certutil', '-d', 'sql:/etc/dirsrv/slapd-SEAPROJECT-TEST-RU/', '-A', '-n', 'SEAPROJECT-TEST.RU IPA CA', '-t', 'CT,C,C', '-a', '-f', '/etc/dirsrv/slapd-SEAPROJECT-TEST-RU/pwdfile.txt'] returned non-zero exit status 255: 'certutil: could not decode certificate: SEC_ERROR_REUSED_ISSUER_AND_SERIAL: You are attempting to import a cert with the same issuer/serial as an existing cert, but that is not the same cert.\n')
+The ipa-server-install command failed. See /var/log/ipaserver-install.log for more information
+
+
+
 
