@@ -38,3 +38,25 @@ rtt min/avg/max/mdev = 0.045/0.052/0.057/0.004 ms
 * OpenSSL/3.4.0: error:0A0000C6:SSL routines::packet length too long
 * Closing connection 0
 curl: (35) OpenSSL/3.4.0: error:0A0000C6:SSL routines::packet length too long
+
+
+root@freeipa:~# apache2ctl -S
+VirtualHost configuration:
+*:80                   freeipa.seaproject-test.ru (/etc/apache2/sites-enabled/000-default.conf:1)
+ServerRoot: "/etc/apache2"
+Main DocumentRoot: "/var/www/html"
+Main ErrorLog: "/var/log/apache2/error.log"
+Mutex ssl-stapling: using_defaults
+Mutex proxy: using_defaults
+Mutex ssl-cache: using_defaults
+Mutex default: dir="/var/run/apache2/" mechanism=default
+Mutex mpm-accept: using_defaults
+Mutex watchdog-callback: using_defaults
+Mutex rewrite-map: using_defaults
+Mutex ssl-stapling-refresh: using_defaults
+PidFile: "/var/run/apache2/apache2.pid"
+Define: DUMP_VHOSTS
+Define: DUMP_RUN_CFG
+User: name="www-data" id=33
+Group: name="www-data" id=33
+
