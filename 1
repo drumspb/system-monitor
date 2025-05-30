@@ -156,6 +156,33 @@ rm -rf /etc/systemd/system/pki*
 # Удалим старую NSS-базу, если осталась:
 find /etc -name "cert8.db" -o -name "cert9.db" -o -name "key3.db" -o -name "key4.db" | xargs rm -f
 
+  File "/usr/lib/python3/dist-packages/ipapython/install/util.py", line 81, in run_generator_with_yield_from
+    six.reraise(*exc_info)
+  File "/usr/lib/python3/dist-packages/six.py", line 719, in reraise
+    raise value
+  File "/usr/lib/python3/dist-packages/ipapython/install/util.py", line 59, in run_generator_with_yield_from
+    value = gen.send(prev_value)
+            ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/ipapython/install/common.py", line 65, in _install
+    for unused in self._installer(self.parent):
+  File "/usr/lib/python3/dist-packages/ipaserver/install/server/__init__.py", line 564, in main
+    master_install_check(self)
+  File "/usr/lib/python3/dist-packages/ipaserver/install/server/install.py", line 278, in decorated
+    func(installer)
+  File "/usr/lib/python3/dist-packages/ipaserver/install/server/install.py", line 681, in install_check
+    ipaconf.newConf(target_fname, opts)
+  File "/usr/lib/python3/dist-packages/ipapython/ipachangeconf.py", line 547, in newConf
+    f = openLocked(file, file_perms)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/ipapython/ipachangeconf.py", line 46, in openLocked
+    raise IOError(e.errno, e.strerror)
+
+2025-05-30T09:29:47Z DEBUG The ipa-server-install command failed, exception: FileNotFoundError: [Errno 2] No such file or directory
+2025-05-30T09:29:47Z ERROR [Errno 2] No such file or directory
+2025-05-30T09:29:47Z ERROR The ipa-server-install command failed. See /var/log/ipaserver-install.log for more information
+root@freeipa:~#
+
+
 
 
 
