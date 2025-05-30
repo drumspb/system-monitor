@@ -82,3 +82,52 @@ Group: name="www-data" id=33
 </VirtualHost>
 
 
+
+root@freeipa:~# nano /etc/apache2/sites-available/
+000-default.conf  default-ssl.conf
+root@freeipa:~# nano /etc/apache2/sites-available/freeipa-ssl.conf
+root@freeipa:~# cat /var/lib/ipa/
+backup/     certs/      dnssec/     gssproxy/   passwds/    pki-ca/     private/    sysrestore/ sysupgrade/
+root@freeipa:~# cat /var/lib/ipa/certs/
+cacert.pem  httpd.crt   kdc.crt     kdc.key
+root@freeipa:~# cat /var/lib/ipa/certs/^C
+root@freeipa:~# a2en
+a2enconf  a2enmod   a2ensite
+root@freeipa:~# a2ensite freeipa-ssl.conf
+Enabling site freeipa-ssl.
+To activate the new configuration, you need to run:
+  systemctl reload apache2
+root@freeipa:~# systemctl reload apache2
+Job for apache2.service failed.
+See "systemctl status apache2.service" and "journalctl -xeu apache2.service" for details.
+root@freeipa:~# apache2ctl -S
+VirtualHost configuration:
+*:80                   freeipa.seaproject-test.ru (/etc/apache2/sites-enabled/000-default.conf:1)
+*:443                  freeipa.seaproject-test.ru (/etc/apache2/sites-enabled/freeipa-ssl.conf:1)
+ServerRoot: "/etc/apache2"
+Main DocumentRoot: "/var/www/html"
+Main ErrorLog: "/var/log/apache2/error.log"
+Mutex ssl-stapling: using_defaults
+Mutex proxy: using_defaults
+Mutex ssl-cache: using_defaults
+Mutex default: dir="/var/run/apache2/" mechanism=default
+Mutex mpm-accept: using_defaults
+Mutex watchdog-callback: using_defaults
+Mutex rewrite-map: using_defaults
+Mutex ssl-stapling-refresh: using_defaults
+PidFile: "/var/run/apache2/apache2.pid"
+Define: DUMP_VHOSTS
+Define: DUMP_RUN_CFG
+User: name="www-data" id=33
+Group: name="www-data" id=33
+root@freeipa:~# cat /etc/apache2/sites-available/
+000-default.conf  default-ssl.conf  freeipa-ssl.conf
+root@freeipa:~# cat /etc/apache2/sites-available/000-default.conf
+<VirtualHost *:80>
+    ServerName freeipa.seaproject-test.ru
+    DocumentRoot /var/www/html
+</VirtualHost>
+root@freeipa:~#
+
+
+
