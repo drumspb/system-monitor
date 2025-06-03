@@ -183,6 +183,24 @@ find /etc -name "cert8.db" -o -name "cert9.db" -o -name "key3.db" -o -name "key4
 root@freeipa:~#
 
 
+mkdir -p ~/orangepi-test
+cp /mnt/boot/Image ~/orangepi-test/
+cp /mnt/boot/uInitrd ~/orangepi-test/
+cp /mnt/boot/dtb-5.10.160-rockchip-rk356x/rockchip/rk3588s-orangepi-5.dtb ~/orangepi-test/
+
+sudo qemu-system-aarch64 \
+  -M virt \
+  -cpu cortex-a72 \
+  -m 2048 \
+  -kernel ~/orangepi-test/Image \
+  -initrd ~/orangepi-test/uInitrd \
+  -dtb ~/orangepi-test/rk3588s-orangepi-5.dtb \
+  -append "console=ttyAMA0 root=/dev/vda3 rw rootwait" \
+  -drive file=/dev/sdb,format=raw,if=virtio \
+  -nographic
+
+
+
 
 
 
