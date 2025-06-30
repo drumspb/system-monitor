@@ -297,3 +297,38 @@ root@sp-nb-poke05:~# blkid /dev/sda3
 /dev/sda3: BLOCK_SIZE="512" UUID="1410767D107665A0" TYPE="ntfs" PARTUUID="ea40908e-03"
 
 
+
+#!/bin/bash
+
+# Включаем IP-форвардинг
+sysctl -w net.ipv4.ip_forward=1
+
+# Очистим старые правила (опционально, только если точно знаешь)
+# iptables -t nat -F
+
+# Пример правил (добавляй нужные)
+iptables -t nat -A PREROUTING -p tcp --dport 8001 -j DNAT --to-destination 192.168.55.1:80
+iptables -t nat -A POSTROUTING -p tcp -d 192.168.55.1 --dport 80 -j MASQUERADE
+
+iptables -t nat -A PREROUTING -p tcp --dport 8002 -j DNAT --to-destination 192.168.0.1:80
+iptables -t nat -A POSTROUTING -p tcp -d 192.168.0.1 --dport 80 -j MASQUERADE
+
+iptables -t nat -A PREROUTING -p tcp --dport 8003 -j DNAT --to-destination 192.168.0.2:80
+iptables -t nat -A POSTROUTING -p tcp -d 192.168.0.2 --dport 80 -j MASQUERADE
+
+
+[Unit]
+Description=Apply iptables port forwarding rules
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/etc/iptables/port_forward.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+
+
+
+
